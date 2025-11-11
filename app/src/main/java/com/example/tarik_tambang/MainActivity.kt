@@ -134,7 +134,7 @@ fun GameScreen() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "🎮 TARIK TAMBANG 🎮",
+                        text = "TARIK TAMBANG",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
