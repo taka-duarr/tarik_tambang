@@ -107,7 +107,7 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    "🎮 TARIK TAMBANG 🎮",
+                    "TARIK TAMBANG",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold,
                         color = Color(0xFF1A237E)
@@ -186,7 +186,7 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Text("🤝 GABUNG ROOM", fontWeight = FontWeight.Bold)
+                    Text("GABUNG ROOM", fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(Modifier.height(32.dp))
@@ -221,7 +221,7 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                         containerColor = Color(0xFF4CAF50)
                     )
                 ) {
-                    Text("✨ BUAT ROOM BARU", fontWeight = FontWeight.Bold)
+                    Text("BUAT ROOM BARU", fontWeight = FontWeight.Bold)
                 }
 
                 if (message.isNotBlank()) {
@@ -359,7 +359,7 @@ fun ActiveGameScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "🎮 TARIK TAMBANG 🎮",
+                        text = "TARIK TAMBANG",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.ExtraBold,
                             color = Color.White,
@@ -572,7 +572,7 @@ fun ActiveGameScreen(
                                     ),
                                     shape = RoundedCornerShape(16.dp)
                                 ) {
-                                    Text("🔄 Play Again", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    Text("Play Again", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                         } else {
@@ -638,7 +638,7 @@ fun ActiveGameScreen(
                                                 val correctAnswer = answerSnapshot.getValue(Int::class.java)
 
                                                 if (answerInt == correctAnswer) {
-                                                    message = "✅ BENAR! Menambah skor..."
+                                                    message = "BENAR! Menambah skor..."
                                                     val scoreRef = roomRef.child("$myRole/score")
 
                                                     scoreRef.runTransaction(object : Transaction.Handler {
@@ -683,7 +683,7 @@ fun ActiveGameScreen(
                                                     userAnswer = ""
 
                                                 } else {
-                                                    message = "❌ SALAH! Coba lagi."
+                                                    message = "SALAH! Coba lagi."
                                                 }
                                             }.addOnFailureListener {
                                                 message = "Gagal mengecek jawaban: ${it.message}"
@@ -738,7 +738,7 @@ fun ActiveGameScreen(
                                             ),
                                             shape = RoundedCornerShape(20.dp)
                                         ) {
-                                            Text("🚀 I'M READY!", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
+                                            Text("I'M READY!", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                                         }
                                     } else {
                                         Column(
@@ -805,7 +805,7 @@ fun ActiveGameScreen(
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text("🚪 Leave Room", color = Color(0xFFFF6B6B))
+                            Text("Leave Room", color = Color(0xFFFF6B6B))
                         }
                     }
                 }
