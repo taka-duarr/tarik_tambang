@@ -25,13 +25,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.database.*
-
-// Import untuk Share Intent
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 
-// Import untuk kode room
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,9 +40,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-/**
- * Router yang menyimpan state navigasi
- */
 @Composable
 fun GameNavigation() {
     var activeRoomCode by remember { mutableStateOf<String?>(null) }
@@ -54,7 +47,7 @@ fun GameNavigation() {
     var myName by remember { mutableStateOf<String?>(null) }
 
     if (activeRole == null) {
-        // Tampilkan Lobby jika belum masuk room
+
         LobbyScreen(
             onJoinRoom = { code, role, name ->
                 activeRoomCode = code
@@ -77,9 +70,7 @@ fun GameNavigation() {
     }
 }
 
-/**
- * Layar Lobby untuk Buat/Gabung Room
- */
+
 @Composable
 fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) {
     val roomsRef = remember { FirebaseDatabase.getInstance().getReference("rooms") }
@@ -211,8 +202,6 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                         }
 
                         val newRoomCode = generateRoomCode()
-                        // MODIFIKASI: Menambahkan 'createdAt' untuk Solusi 1 (opsional)
-                        // Meskipun kita pakai Solusi 2, ini tidak ada salahnya
                         val roomData = mapOf(
                             "status" to "waiting",
                             "createdAt" to ServerValue.TIMESTAMP
@@ -249,9 +238,7 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
 }
 
 
-/**
- * Layar Game Aktif
- */
+
 @Composable
 fun ActiveGameScreen(
     roomCode: String,
@@ -301,7 +288,7 @@ fun ActiveGameScreen(
         label = "rope"
     )
 
-    // Efek untuk mendaftarkan diri ke Firebase saat masuk
+
     LaunchedEffect(roomRef, myRole, myName) {
         val playerRef = roomRef.child(myRole)
         val updates = mapOf(
@@ -805,8 +792,6 @@ fun ActiveGameScreen(
                                         val otherPlayerName = snap.getValue(String::class.java)
 
                                         if (otherPlayerName.isNullOrBlank()) {
-                                            // 3A. JIKA KITA PEMAIN TERAKHIR (lawan sudah kosong)
-                                            // HAPUS SELURUH ROOM
                                             roomRef.removeValue()
                                         }
 
