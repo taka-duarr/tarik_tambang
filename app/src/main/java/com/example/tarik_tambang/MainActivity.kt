@@ -10,11 +10,12 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -25,24 +26,244 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.database.*
 
+// Import untuk Share Intent
+import android.content.Intent
+import androidx.compose.ui.platform.LocalContext
+
+// Import untuk kode room
+import kotlin.random.Random
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             MaterialTheme {
-                GameScreen()
+                GameNavigation()
             }
         }
     }
 }
 
+/**
+ * Router yang menyimpan state navigasi
+ */
 @Composable
-fun GameScreen() {
-    val roomRef = remember { FirebaseDatabase.getInstance().getReference("rooms/room1") }
+fun GameNavigation() {
+    var activeRoomCode by remember { mutableStateOf<String?>(null) }
+    var activeRole by remember { mutableStateOf<String?>(null) }
+    var myName by remember { mutableStateOf<String?>(null) }
+
+    if (activeRole == null) {
+        // Tampilkan Lobby jika belum masuk room
+        LobbyScreen(
+            onJoinRoom = { code, role, name ->
+                activeRoomCode = code
+                activeRole = role
+                myName = name
+            }
+        )
+    } else {
+        // Tampilkan Game jika sudah ada role
+        ActiveGameScreen(
+            roomCode = activeRoomCode!!,
+            myRole = activeRole!!,
+            myName = myName!!,
+            onLeaveRoom = {
+                activeRoomCode = null
+                activeRole = null
+                myName = null
+            }
+        )
+    }
+}
+
+/**
+ * Layar Lobby untuk Buat/Gabung Room
+ */
+@Composable
+fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) {
+    val roomsRef = remember { FirebaseDatabase.getInstance().getReference("rooms") }
 
     var enteredName by remember { mutableStateOf("") }
-    var myRole by remember { mutableStateOf<String?>(null) }
-    var myName by remember { mutableStateOf("") }
+    var roomCodeInput by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(
+                        Color(0xFF1A237E),
+                        Color(0xFF283593),
+                        Color(0xFF3949AB)
+                    )
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .padding(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp),
+            elevation = CardDefaults.cardElevation(8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "🎮 TARIK TAMBANG 🎮",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1A237E)
+                    )
+                )
+                Text(
+                    "Math Battle Arena",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFF3949AB),
+                        fontWeight = FontWeight.Light
+                    )
+                )
+                Spacer(Modifier.height(32.dp))
+
+                // Kolom Nama
+                OutlinedTextField(
+                    value = enteredName,
+                    onValueChange = { enteredName = it },
+                    label = { Text("Masukkan Nama Anda") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF3949AB),
+                        focusedLabelColor = Color(0xFF3949AB)
+                    )
+                )
+                Spacer(Modifier.height(32.dp))
+
+                // Gabung Room
+                OutlinedTextField(
+                    value = roomCodeInput,
+                    onValueChange = { roomCodeInput = it.uppercase() },
+                    label = { Text("Kode Room") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color(0xFF3949AB),
+                        focusedLabelColor = Color(0xFF3949AB)
+                    )
+                )
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        if (enteredName.isBlank()) {
+                            message = "Nama tidak boleh kosong"
+                            return@Button
+                        }
+                        if (roomCodeInput.isBlank()) {
+                            message = "Kode room tidak boleh kosong"
+                            return@Button
+                        }
+
+                        roomsRef.child(roomCodeInput).get().addOnSuccessListener { snapshot ->
+                            if (!snapshot.exists()) {
+                                message = "Room '$roomCodeInput' tidak ditemukan"
+                                return@addOnSuccessListener
+                            }
+
+                            val aName = snapshot.child("playerA/name").getValue(String::class.java)
+                            val bName = snapshot.child("playerB/name").getValue(String::class.java)
+
+                            if (aName.isNullOrBlank() || aName == enteredName) {
+                                onJoinRoom(roomCodeInput, "playerA", enteredName)
+                            } else if (bName.isNullOrBlank() || bName == enteredName) {
+                                onJoinRoom(roomCodeInput, "playerB", enteredName)
+                            } else {
+                                message = "Room '$roomCodeInput' sudah penuh!"
+                            }
+
+                        }.addOnFailureListener {
+                            message = "Error: ${it.message}"
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Text("🤝 GABUNG ROOM", fontWeight = FontWeight.Bold)
+                }
+
+                Spacer(Modifier.height(32.dp))
+                Text("ATAU")
+                Spacer(Modifier.height(32.dp))
+
+                // Buat Room
+                Button(
+                    onClick = {
+                        if (enteredName.isBlank()) {
+                            message = "Nama tidak boleh kosong"
+                            return@Button
+                        }
+
+                        val newRoomCode = generateRoomCode()
+                        // MODIFIKASI: Menambahkan 'createdAt' untuk Solusi 1 (opsional)
+                        // Meskipun kita pakai Solusi 2, ini tidak ada salahnya
+                        val roomData = mapOf(
+                            "status" to "waiting",
+                            "createdAt" to ServerValue.TIMESTAMP
+                        )
+
+                        roomsRef.child(newRoomCode).setValue(roomData)
+                            .addOnSuccessListener {
+                                onJoinRoom(newRoomCode, "playerA", enteredName)
+                            }
+                            .addOnFailureListener {
+                                message = "Gagal membuat room: ${it.message}"
+                            }
+                    },
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50)
+                    )
+                ) {
+                    Text("✨ BUAT ROOM BARU", fontWeight = FontWeight.Bold)
+                }
+
+                if (message.isNotBlank()) {
+                    Spacer(Modifier.height(24.dp))
+                    Text(
+                        text = message,
+                        color = Color(0xFFFF6B6B),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+/**
+ * Layar Game Aktif
+ */
+@Composable
+fun ActiveGameScreen(
+    roomCode: String,
+    myRole: String,
+    myName: String,
+    onLeaveRoom: () -> Unit
+) {
+    val roomRef = remember(roomCode) {
+        FirebaseDatabase.getInstance().getReference("rooms/$roomCode")
+    }
+
+    // State Lokal
     var playerAName by remember { mutableStateOf("") }
     var playerBName by remember { mutableStateOf("") }
     var playerAScore by remember { mutableStateOf(0) }
@@ -52,11 +273,10 @@ fun GameScreen() {
     var message by remember { mutableStateOf("") }
     val playerAReady = remember { mutableStateOf(false) }
     val playerBReady = remember { mutableStateOf(false) }
-
     var questionText by remember { mutableStateOf("Menunggu soal...") }
     var userAnswer by remember { mutableStateOf("") }
 
-    // Animation states
+    // Animasi
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
@@ -81,7 +301,25 @@ fun GameScreen() {
         label = "rope"
     )
 
-    LaunchedEffect(Unit) {
+    // Efek untuk mendaftarkan diri ke Firebase saat masuk
+    LaunchedEffect(roomRef, myRole, myName) {
+        val playerRef = roomRef.child(myRole)
+        val updates = mapOf(
+            "name" to myName,
+            "score" to 0,
+            "ready" to 0
+        )
+        playerRef.updateChildren(updates)
+
+        roomRef.child("status").get().addOnSuccessListener {
+            if(it.getValue(String::class.java) != "playing") {
+                roomRef.child("status").setValue("waiting")
+            }
+        }
+    }
+
+    // Listener Firebase
+    LaunchedEffect(roomRef) {
         roomRef.child("playerA/name").addValueEventListener(simpleStringListener { playerAName = it ?: "" })
         roomRef.child("playerA/score").addValueEventListener(simpleIntListener { playerAScore = it ?: 0 })
         roomRef.child("playerA/ready").addValueEventListener(simpleIntListener { playerAReady.value = it == 1 })
@@ -119,7 +357,7 @@ fun GameScreen() {
             verticalArrangement = Arrangement.SpaceBetween
         ) {
 
-            // Header
+            // Header (Dengan tombol Share)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -141,13 +379,44 @@ fun GameScreen() {
                             fontSize = 28.sp
                         )
                     )
-                    Text(
-                        text = "Math Battle Arena",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.8f),
-                            fontWeight = FontWeight.Light
+
+                    Spacer(Modifier.height(8.dp))
+                    val context = LocalContext.current
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "Room Code: $roomCode",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                color = Color.White.copy(alpha = 0.9f),
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
                         )
-                    )
+                        Spacer(Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                val sendIntent = Intent().apply {
+                                    action = Intent.ACTION_SEND
+                                    putExtra(Intent.EXTRA_TEXT, "Ayo main Tarik Tambang Kuis! GABUNG di room-ku dengan kode: $roomCode")
+                                    type = "text/plain"
+                                }
+                                val shareIntent = Intent.createChooser(sendIntent, "Bagikan Kode Room")
+                                context.startActivity(shareIntent)
+                            },
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(Color.White.copy(alpha = 0.2f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share Room Code",
+                                tint = Color.White,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                 }
             }
 
@@ -160,7 +429,6 @@ fun GameScreen() {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    // Player A Card
                     PlayerCard(
                         playerName = playerAName.ifEmpty { "Waiting..." },
                         score = playerAScore,
@@ -170,7 +438,6 @@ fun GameScreen() {
                         isActive = myRole == "playerA"
                     )
 
-                    // Player B Card
                     PlayerCard(
                         playerName = playerBName.ifEmpty { "Waiting..." },
                         score = playerBScore,
@@ -240,421 +507,320 @@ fun GameScreen() {
                         .padding(20.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (myRole == null) {
-                        // Join Screen
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
+                    // Game Screen (UI utama)
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Player Info
+                        Surface(
+                            color = Color(0xFFF1F3F4),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                text = "Join The Battle!",
-                                style = MaterialTheme.typography.headlineSmall.copy(
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "You: $myName",
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF1A237E)
                                 )
-                            )
-                            Spacer(Modifier.height(24.dp))
-
-                            OutlinedTextField(
-                                value = enteredName,
-                                onValueChange = { enteredName = it },
-                                label = { Text("Your Name") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = Color(0xFF3949AB),
-                                    focusedLabelColor = Color(0xFF3949AB)
-                                )
-                            )
-
-                            Spacer(Modifier.height(20.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Button(
-                                    onClick = {
-                                        if (enteredName.isBlank()) {
-                                            message = "Nama tidak boleh kosong"
-                                            return@Button
-                                        }
-                                        myRole = "playerA"
-                                        myName = enteredName
-                                        roomRef.child("playerA/name").setValue(enteredName)
-                                        roomRef.child("playerA/score").setValue(0)
-                                        roomRef.child("playerA/ready").setValue(0)
-                                        roomRef.child("status").setValue("waiting")
-                                        message = "Masuk sebagai Player A"
-                                    },
-                                    modifier = Modifier.weight(1f).height(56.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFFFF6B6B)
-                                    ),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Join as", fontSize = 12.sp)
-                                        Text("PLAYER A", fontWeight = FontWeight.Bold)
-                                    }
-                                }
-
-                                Button(
-                                    onClick = {
-                                        if (enteredName.isBlank()) {
-                                            message = "Nama tidak boleh kosong"
-                                            return@Button
-                                        }
-                                        myRole = "playerB"
-                                        myName = enteredName
-                                        roomRef.child("playerB/name").setValue(enteredName)
-                                        roomRef.child("playerB/score").setValue(0)
-                                        roomRef.child("playerB/ready").setValue(0)
-
-                                        roomRef.child("playerA/name").get().addOnSuccessListener { snap ->
-                                            val aName = snap.getValue(String::class.java)
-                                            if (!aName.isNullOrBlank()) {
-                                                roomRef.child("status").setValue("waiting")
-                                                message = "Game siap, klik Ready!"
-                                            } else {
-                                                roomRef.child("status").setValue("waiting")
-                                                message = "Menunggu Player A"
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f).height(56.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color(0xFF4ECDC4)
-                                    ),
-                                    shape = RoundedCornerShape(16.dp)
-                                ) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Join as", fontSize = 12.sp)
-                                        Text("PLAYER B", fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                            }
-
-                            if (message.isNotBlank()) {
-                                Spacer(Modifier.height(16.dp))
                                 Text(
-                                    text = message,
-                                    color = Color(0xFFFF6B6B),
-                                    textAlign = TextAlign.Center
+                                    text = status.uppercase(),
+                                    color = when(status) {
+                                        "playing" -> Color(0xFF4CAF50)
+                                        else -> Color(0xFFFF9800)
+                                    },
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
                                 )
                             }
                         }
-                    } else {
-                        // Game Screen
-                        Column(
-                            modifier = Modifier.fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            // Player Info
-                            Surface(
-                                color = Color(0xFFF1F3F4),
-                                shape = RoundedCornerShape(12.dp),
-                                modifier = Modifier.fillMaxWidth()
+
+                        Spacer(Modifier.height(16.dp))
+
+                        if (winner.isNotBlank()) {
+                            // Winner Screen
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.scale(pulseScale)
                             ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "You: $myName",
+                                Text("🏆", fontSize = 80.sp)
+                                Text(
+                                    text = "WINNER!",
+                                    style = MaterialTheme.typography.headlineLarge.copy(
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color(0xFFFFD93D)
+                                    )
+                                )
+                                Text(
+                                    text = winner,
+                                    style = MaterialTheme.typography.headlineMedium.copy(
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFF1A237E)
                                     )
-                                    Text(
-                                        text = status.uppercase(),
-                                        color = when(status) {
-                                            "playing" -> Color(0xFF4CAF50)
-                                            else -> Color(0xFFFF9800)
-                                        },
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
-                                    )
+                                )
+                                Spacer(Modifier.height(24.dp))
+                                Button(
+                                    onClick = {
+                                        roomRef.child("playerA/score").setValue(0)
+                                        roomRef.child("playerB/score").setValue(0)
+                                        roomRef.child("playerA/ready").setValue(0)
+                                        roomRef.child("playerB/ready").setValue(0)
+                                        roomRef.child("winner").setValue("")
+                                        roomRef.child("status").setValue("waiting")
+                                        roomRef.child("currentQuestion").setValue("Menunggu...")
+                                        roomRef.child("currentAnswer").setValue(0)
+                                        message = "Game direset, tunggu pemain lain"
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth(0.7f)
+                                        .height(56.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF4CAF50)
+                                    ),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("🔄 Play Again", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
-
-                            Spacer(Modifier.height(16.dp))
-
-                            if (winner.isNotBlank()) {
-                                // Winner Screen
+                        } else {
+                            if (status == "playing") {
+                                // Question Screen
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.scale(pulseScale)
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(
-                                        text = "🏆",
-                                        fontSize = 80.sp
-                                    )
-                                    Text(
-                                        text = "WINNER!",
-                                        style = MaterialTheme.typography.headlineLarge.copy(
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = Color(0xFFFFD93D)
-                                        )
-                                    )
-                                    Text(
-                                        text = winner,
-                                        style = MaterialTheme.typography.headlineMedium.copy(
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF1A237E)
-                                        )
-                                    )
+                                    Surface(
+                                        color = Color(0xFF1A237E),
+                                        shape = RoundedCornerShape(16.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(24.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(
+                                                text = "❓ SOLVE THIS!",
+                                                color = Color.White.copy(alpha = 0.7f),
+                                                fontSize = 14.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Spacer(Modifier.height(8.dp))
+                                            Text(
+                                                text = questionText,
+                                                style = MaterialTheme.typography.headlineLarge.copy(
+                                                    color = Color.White,
+                                                    fontWeight = FontWeight.ExtraBold,
+                                                    fontSize = 36.sp
+                                                )
+                                            )
+                                        }
+                                    }
+
                                     Spacer(Modifier.height(24.dp))
+
+                                    OutlinedTextField(
+                                        value = userAnswer,
+                                        onValueChange = { userAnswer = it },
+                                        label = { Text("Your Answer") },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        textStyle = MaterialTheme.typography.headlineMedium.copy(
+                                            textAlign = TextAlign.Center,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    )
+
+                                    Spacer(Modifier.height(16.dp))
+
                                     Button(
                                         onClick = {
-                                            roomRef.child("playerA/score").setValue(0)
-                                            roomRef.child("playerB/score").setValue(0)
-                                            roomRef.child("playerA/ready").setValue(0)
-                                            roomRef.child("playerB/ready").setValue(0)
-                                            roomRef.child("winner").setValue("")
-                                            roomRef.child("status").setValue("waiting")
-                                            roomRef.child("currentQuestion").setValue("Menunggu...")
-                                            roomRef.child("currentAnswer").setValue(0)
-                                            message = "Game direset, tunggu pemain lain"
+                                            val answerInt = userAnswer.toIntOrNull()
+                                            if (answerInt == null) {
+                                                message = "Masukkan jawaban berupa angka"
+                                                return@Button
+                                            }
+                                            roomRef.child("currentAnswer").get().addOnSuccessListener { answerSnapshot ->
+                                                val correctAnswer = answerSnapshot.getValue(Int::class.java)
+
+                                                if (answerInt == correctAnswer) {
+                                                    message = "✅ BENAR! Menambah skor..."
+                                                    val scoreRef = roomRef.child("$myRole/score")
+
+                                                    scoreRef.runTransaction(object : Transaction.Handler {
+                                                        override fun doTransaction(currentData: MutableData): Transaction.Result {
+                                                            val cur = currentData.getValue(Int::class.java) ?: 0
+                                                            currentData.value = cur + 1
+                                                            return Transaction.success(currentData)
+                                                        }
+
+                                                        override fun onComplete(
+                                                            error: DatabaseError?,
+                                                            committed: Boolean,
+                                                            currentData: DataSnapshot?
+                                                        ) {
+                                                            if (error != null || !committed) {
+                                                                message = "Gagal update skor: ${error?.message}"
+                                                                return
+                                                            }
+
+                                                            roomRef.get().addOnSuccessListener { snap ->
+                                                                val aScore = snap.child("playerA/score").getValue(Int::class.java) ?: 0
+                                                                val bScore = snap.child("playerB/score").getValue(Int::class.java) ?: 0
+                                                                val threshold = 10
+
+                                                                var winnerFound = false
+                                                                if (aScore >= threshold) {
+                                                                    roomRef.child("winner").setValue(playerAName.ifBlank { "Player A" })
+                                                                    roomRef.child("status").setValue("finished")
+                                                                    winnerFound = true
+                                                                } else if (bScore >= threshold) {
+                                                                    roomRef.child("winner").setValue(playerBName.ifBlank { "Player B" })
+                                                                    roomRef.child("status").setValue("finished")
+                                                                    winnerFound = true
+                                                                }
+
+                                                                if (!winnerFound) {
+                                                                    generateNewQuestion(roomRef)
+                                                                }
+                                                            }
+                                                        }
+                                                    })
+                                                    userAnswer = ""
+
+                                                } else {
+                                                    message = "❌ SALAH! Coba lagi."
+                                                }
+                                            }.addOnFailureListener {
+                                                message = "Gagal mengecek jawaban: ${it.message}"
+                                            }
                                         },
                                         modifier = Modifier
-                                            .fillMaxWidth(0.7f)
+                                            .fillMaxWidth()
                                             .height(56.dp),
                                         colors = ButtonDefaults.buttonColors(
                                             containerColor = Color(0xFF4CAF50)
                                         ),
                                         shape = RoundedCornerShape(16.dp)
                                     ) {
-                                        Text("🔄 Play Again", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text("✓ SUBMIT ANSWER", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             } else {
-                                if (status == "playing") {
-                                    // Question Screen
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Surface(
-                                            color = Color(0xFF1A237E),
-                                            shape = RoundedCornerShape(16.dp),
-                                            modifier = Modifier.fillMaxWidth()
-                                        ) {
-                                            Column(
-                                                modifier = Modifier.padding(24.dp),
-                                                horizontalAlignment = Alignment.CenterHorizontally
-                                            ) {
-                                                Text(
-                                                    text = "❓ SOLVE THIS!",
-                                                    color = Color.White.copy(alpha = 0.7f),
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                                Spacer(Modifier.height(8.dp))
-                                                Text(
-                                                    text = questionText,
-                                                    style = MaterialTheme.typography.headlineLarge.copy(
-                                                        color = Color.White,
-                                                        fontWeight = FontWeight.ExtraBold,
-                                                        fontSize = 36.sp
-                                                    )
-                                                )
-                                            }
-                                        }
+                                // "Waiting/Ready Screen"
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    val myReadyState = if (myRole == "playerA") playerAReady.value else playerBReady.value
 
-                                        Spacer(Modifier.height(24.dp))
-
-                                        OutlinedTextField(
-                                            value = userAnswer,
-                                            onValueChange = { userAnswer = it },
-                                            label = { Text("Your Answer") },
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                            singleLine = true,
-                                            modifier = Modifier.fillMaxWidth(),
-                                            shape = RoundedCornerShape(12.dp),
-                                            textStyle = MaterialTheme.typography.headlineMedium.copy(
-                                                textAlign = TextAlign.Center,
-                                                fontWeight = FontWeight.Bold
+                                    if (!myReadyState) {
+                                        Text(
+                                            text = "⚡ Ready to Battle?",
+                                            style = MaterialTheme.typography.headlineSmall.copy(
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF1A237E)
                                             )
                                         )
-
-                                        Spacer(Modifier.height(16.dp))
-
+                                        Spacer(Modifier.height(24.dp))
                                         Button(
                                             onClick = {
-                                                val answerInt = userAnswer.toIntOrNull()
-                                                if (answerInt == null) {
-                                                    message = "Masukkan jawaban berupa angka"
-                                                    return@Button
-                                                }
-                                                roomRef.child("currentAnswer").get().addOnSuccessListener { answerSnapshot ->
-                                                    val correctAnswer = answerSnapshot.getValue(Int::class.java)
-
-                                                    if (answerInt == correctAnswer) {
-                                                        message = "✅ BENAR! Menambah skor..."
-                                                        val scoreRef = roomRef.child("$myRole/score")
-
-                                                        scoreRef.runTransaction(object : Transaction.Handler {
-                                                            override fun doTransaction(currentData: MutableData): Transaction.Result {
-                                                                val cur = currentData.getValue(Int::class.java) ?: 0
-                                                                currentData.value = cur + 1
-                                                                return Transaction.success(currentData)
-                                                            }
-
-                                                            override fun onComplete(
-                                                                error: DatabaseError?,
-                                                                committed: Boolean,
-                                                                currentData: DataSnapshot?
-                                                            ) {
-                                                                if (error != null || !committed) {
-                                                                    message = "Gagal update skor: ${error?.message}"
-                                                                    return
-                                                                }
-
-                                                                roomRef.get().addOnSuccessListener { snap ->
-                                                                    val aScore = snap.child("playerA/score").getValue(Int::class.java) ?: 0
-                                                                    val bScore = snap.child("playerB/score").getValue(Int::class.java) ?: 0
-                                                                    val threshold = 10
-
-                                                                    var winnerFound = false
-                                                                    if (aScore >= threshold) {
-                                                                        roomRef.child("winner").setValue(playerAName.ifBlank { "Player A" })
-                                                                        roomRef.child("status").setValue("finished")
-                                                                        winnerFound = true
-                                                                    } else if (bScore >= threshold) {
-                                                                        roomRef.child("winner").setValue(playerBName.ifBlank { "Player B" })
-                                                                        roomRef.child("status").setValue("finished")
-                                                                        winnerFound = true
-                                                                    }
-
-                                                                    if (!winnerFound) {
-                                                                        generateNewQuestion(roomRef)
-                                                                    }
-                                                                }
-                                                            }
-                                                        })
-                                                        userAnswer = ""
-
+                                                roomRef.child(myRole).child("ready").setValue(1).addOnSuccessListener {
+                                                    val otherReady = if (myRole == "playerA") playerBReady.value else playerAReady.value
+                                                    if (otherReady) {
+                                                        roomRef.child("status").setValue("playing")
+                                                        generateNewQuestion(roomRef)
+                                                        message = "Game Dimulai!"
                                                     } else {
-                                                        message = "❌ SALAH! Coba lagi."
+                                                        message = "Kamu sudah siap, menunggu lawan."
                                                     }
-                                                }.addOnFailureListener {
-                                                    message = "Gagal mengecek jawaban: ${it.message}"
                                                 }
                                             },
                                             modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(56.dp),
+                                                .fillMaxWidth(0.7f)
+                                                .height(64.dp)
+                                                .scale(pulseScale),
                                             colors = ButtonDefaults.buttonColors(
                                                 containerColor = Color(0xFF4CAF50)
                                             ),
-                                            shape = RoundedCornerShape(16.dp)
+                                            shape = RoundedCornerShape(20.dp)
                                         ) {
-                                            Text("✓ SUBMIT ANSWER", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                            Text("🚀 I'M READY!", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
                                         }
-                                    }
-                                } else {
-                                    // Waiting/Ready Screen
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        val myReadyState = if (myRole == "playerA") playerAReady.value else playerBReady.value
-
-                                        if (!myReadyState) {
+                                    } else {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.scale(pulseScale)
+                                        ) {
+                                            Text("⏳", fontSize = 64.sp)
+                                            Spacer(Modifier.height(16.dp))
                                             Text(
-                                                text = "⚡ Ready to Battle?",
-                                                style = MaterialTheme.typography.headlineSmall.copy(
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF1A237E)
+                                                text = "Waiting for opponent...",
+                                                style = MaterialTheme.typography.titleLarge.copy(
+                                                    color = Color(0xFF666666)
                                                 )
                                             )
-                                            Spacer(Modifier.height(24.dp))
-                                            Button(
-                                                onClick = {
-                                                    roomRef.child("$myRole/ready").setValue(1).addOnSuccessListener {
-                                                        val otherReady = if (myRole == "playerA") playerBReady.value else playerAReady.value
-                                                        if (otherReady) {
-                                                            roomRef.child("status").setValue("playing")
-                                                            generateNewQuestion(roomRef)
-                                                            message = "Game Dimulai!"
-                                                        } else {
-                                                            message = "Kamu sudah siap, menunggu lawan."
-                                                        }
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .fillMaxWidth(0.7f)
-                                                    .height(64.dp)
-                                                    .scale(pulseScale),
-                                                colors = ButtonDefaults.buttonColors(
-                                                    containerColor = Color(0xFF4CAF50)
-                                                ),
-                                                shape = RoundedCornerShape(20.dp)
-                                            ) {
-                                                Text("🚀 I'M READY!", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
-                                            }
-                                        } else {
-                                            Column(
-                                                horizontalAlignment = Alignment.CenterHorizontally,
-                                                modifier = Modifier.scale(pulseScale)
-                                            ) {
-                                                Text(
-                                                    text = "⏳",
-                                                    fontSize = 64.sp
-                                                )
-                                                Spacer(Modifier.height(16.dp))
-                                                Text(
-                                                    text = "Waiting for opponent...",
-                                                    style = MaterialTheme.typography.titleLarge.copy(
-                                                        color = Color(0xFF666666)
-                                                    )
-                                                )
-                                            }
                                         }
                                     }
                                 }
+                            }
 
-                                if (message.isNotBlank() && winner.isBlank()) {
-                                    Spacer(Modifier.height(16.dp))
-                                    Surface(
-                                        color = when {
-                                            message.contains("BENAR") -> Color(0xFF4CAF50).copy(alpha = 0.2f)
-                                            message.contains("SALAH") -> Color(0xFFFF6B6B).copy(alpha = 0.2f)
-                                            else -> Color(0xFF2196F3).copy(alpha = 0.2f)
-                                        },
-                                        shape = RoundedCornerShape(12.dp),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Text(
-                                            text = message,
-                                            modifier = Modifier.padding(12.dp),
-                                            textAlign = TextAlign.Center,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
+                            if (message.isNotBlank() && winner.isBlank()) {
+                                Spacer(Modifier.height(16.dp))
+                                Surface(
+                                    color = when {
+                                        message.contains("BENAR") -> Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                        message.contains("SALAH") -> Color(0xFFFF6B6B).copy(alpha = 0.2f)
+                                        else -> Color(0xFF2196F3).copy(alpha = 0.2f)
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = message,
+                                        modifier = Modifier.padding(12.dp),
+                                        textAlign = TextAlign.Center,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
+                        }
 
-                            Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(8.dp))
 
-                            // Leave Button
-                            TextButton(
-                                onClick = {
-                                    if(myRole != null) {
-                                        roomRef.child("$myRole/ready").setValue(0)
-                                        roomRef.child("$myRole/name").setValue("")
+
+                        TextButton(
+                            onClick = {
+
+                                roomRef.child(myRole).removeValue().addOnCompleteListener {
+
+                                    val otherRole = if (myRole == "playerA") "playerB" else "playerA"
+                                    roomRef.child(otherRole).child("name").get().addOnSuccessListener { snap ->
+                                        val otherPlayerName = snap.getValue(String::class.java)
+
+                                        if (otherPlayerName.isNullOrBlank()) {
+                                            // 3A. JIKA KITA PEMAIN TERAKHIR (lawan sudah kosong)
+                                            // HAPUS SELURUH ROOM
+                                            roomRef.removeValue()
+                                        }
+
+                                        // 3B. (Selalu) Kembali ke Lobby
+                                        onLeaveRoom()
+                                    }.addOnFailureListener {
+                                        // Jika gagal cek, tetap keluar
+                                        onLeaveRoom()
                                     }
-                                    myRole = null
-                                    myName = ""
-                                    enteredName = ""
-                                    message = "Kamu keluar dari room"
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Text("🚪 Leave Room", color = Color(0xFFFF6B6B))
-                            }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("🚪 Leave Room", color = Color(0xFFFF6B6B))
                         }
                     }
                 }
@@ -662,6 +828,7 @@ fun GameScreen() {
         }
     }
 }
+
 
 @Composable
 fun PlayerCard(
@@ -703,19 +870,15 @@ fun PlayerCard(
                     Text("✅", fontSize = 12.sp)
                 }
             }
-
             Spacer(Modifier.height(8.dp))
-
             Text(
                 text = playerName,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
-                maxLines = 1
+                maxLines = 1,
             )
-
             Spacer(Modifier.height(12.dp))
-
             Surface(
                 color = Color.White,
                 shape = CircleShape,
@@ -737,6 +900,15 @@ fun PlayerCard(
     }
 }
 
+
+fun generateRoomCode(length: Int = 5): String {
+    val chars = ('A'..'Z') + ('0'..'9')
+    return (1..length)
+        .map { chars.random() }
+        .joinToString("")
+}
+
+
 fun generateNewQuestion(roomRef: DatabaseReference) {
     val num1 = (1..20).random()
     val num2 = (1..10).random()
@@ -750,6 +922,7 @@ fun generateNewQuestion(roomRef: DatabaseReference) {
     roomRef.updateChildren(updates)
 }
 
+
 fun simpleIntListener(onChange: (Int?) -> Unit): ValueEventListener {
     return object : ValueEventListener {
         override fun onDataChange(snapshot: DataSnapshot) {
@@ -758,6 +931,7 @@ fun simpleIntListener(onChange: (Int?) -> Unit): ValueEventListener {
         override fun onCancelled(error: DatabaseError) {}
     }
 }
+
 
 fun simpleStringListener(onChange: (String?) -> Unit): ValueEventListener {
     return object : ValueEventListener {
