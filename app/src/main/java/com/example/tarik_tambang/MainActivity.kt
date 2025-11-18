@@ -27,17 +27,22 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.database.*
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+
+
+
 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+
         setContent {
-            MaterialTheme {
-                GameNavigation()
-            }
+            GameNavigation()
         }
     }
+
 }
 
 @Composable
@@ -69,6 +74,7 @@ fun GameNavigation() {
         )
     }
 }
+
 
 
 @Composable
@@ -928,3 +934,4 @@ fun simpleStringListener(onChange: (String?) -> Unit): ValueEventListener {
         override fun onCancelled(error: DatabaseError) {}
     }
 }
+
