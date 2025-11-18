@@ -439,12 +439,12 @@ fun ActiveGameScreen(
 
                 // Rope Visualization
                 Box(
-                    modifier = Modifier
+                    modifier = Modifier // Rope / Tali
                         .fillMaxWidth(0.9f)
-                        .height(60.dp)
-                        .offset(x = ropePosition.dp),
+                        .height(60.dp),
                     contentAlignment = Alignment.Center
                 ) {
+                    // 1. Box untuk Tali (Rope) - Tetap di tengah
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -461,9 +461,11 @@ fun ActiveGameScreen(
                             )
                     )
 
+                    // 2. Box untuk Bendera (Flag) - Bergerak
                     Box(
                         modifier = Modifier
                             .size(40.dp)
+                            .offset(x = ropePosition.dp) // <-- Bendera yang akan bergerak
                             .background(Color(0xFFFFD93D), CircleShape)
                             .border(4.dp, Color.White, CircleShape),
                         contentAlignment = Alignment.Center
