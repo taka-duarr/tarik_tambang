@@ -33,6 +33,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 
 
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
@@ -47,41 +48,111 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun GameNavigation() {
+    val context = LocalContext.current
+
+    var savedName by remember { mutableStateOf(UserPrefs.getName(context)) }
     var activeRoomCode by remember { mutableStateOf<String?>(null) }
     var activeRole by remember { mutableStateOf<String?>(null) }
-    var myName by remember { mutableStateOf<String?>(null) }
 
-    if (activeRole == null) {
+    when {
+        savedName == null -> {
+            LoginScreen { username ->
+                UserPrefs.saveName(context, username)
+                savedName = username
+            }
+        }
 
-        LobbyScreen(
-            onJoinRoom = { code, role, name ->
-                activeRoomCode = code
-                activeRole = role
-                myName = name
+        activeRole == null -> {
+            LobbyScreen(
+                fixedName = savedName!!,
+                onJoinRoom = { code, role ->
+                    activeRoomCode = code
+                    activeRole = role
+                }
+            )
+        }
+
+        else -> {
+            ActiveGameScreen(
+                roomCode = activeRoomCode!!,
+                myRole = activeRole!!,
+                myName = savedName!!,
+                onLeaveRoom = {
+                    activeRoomCode = null
+                    activeRole = null
+                }
+            )
+        }
+    }
+}
+
+
+@Composable
+fun LoginScreen(onLogin: (String) -> Unit) {
+    var username by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1A237E)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(0.9f),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("LOGIN", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+
+                Spacer(Modifier.height(24.dp))
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it.trim() },
+                    label = { Text("Username") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(Modifier.height(24.dp))
+
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        if (username.isBlank()) {
+                            message = "Username tidak boleh kosong"
+                        } else {
+                            onLogin(username)
+                        }
+                    }
+                ) {
+                    Text("MASUK", fontWeight = FontWeight.Bold)
+                }
+
+                if (message.isNotEmpty()) {
+                    Spacer(Modifier.height(12.dp))
+                    Text(message, color = Color.Red)
+                }
             }
-        )
-    } else {
-        // Tampilkan Game jika sudah ada role
-        ActiveGameScreen(
-            roomCode = activeRoomCode!!,
-            myRole = activeRole!!,
-            myName = myName!!,
-            onLeaveRoom = {
-                activeRoomCode = null
-                activeRole = null
-                myName = null
-            }
-        )
+        }
     }
 }
 
 
 
+
 @Composable
-fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) {
+fun LobbyScreen(
+    fixedName: String,
+    onJoinRoom: (code: String, role: String) -> Unit
+) {
     val roomsRef = remember { FirebaseDatabase.getInstance().getReference("rooms") }
 
-    var enteredName by remember { mutableStateOf("") }
     var roomCodeInput by remember { mutableStateOf("") }
     var message by remember { mutableStateOf("") }
 
@@ -119,50 +190,29 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                         color = Color(0xFF1A237E)
                     )
                 )
+
                 Text(
-                    "Math Battle Arena",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFF3949AB),
-                        fontWeight = FontWeight.Light
-                    )
+                    "Selamat datang, $fixedName!",
+                    color = Color(0xFF3949AB),
+                    fontWeight = FontWeight.Bold
                 )
+
                 Spacer(Modifier.height(32.dp))
 
-                // Kolom Nama
-                OutlinedTextField(
-                    value = enteredName,
-                    onValueChange = { enteredName = it },
-                    label = { Text("Masukkan Nama Anda") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF3949AB),
-                        focusedLabelColor = Color(0xFF3949AB)
-                    )
-                )
-                Spacer(Modifier.height(32.dp))
-
-                // Gabung Room
+                // Input Kode Room
                 OutlinedTextField(
                     value = roomCodeInput,
                     onValueChange = { roomCodeInput = it.uppercase() },
                     label = { Text("Kode Room") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF3949AB),
-                        focusedLabelColor = Color(0xFF3949AB)
-                    )
+                    shape = RoundedCornerShape(12.dp)
                 )
+
                 Spacer(Modifier.height(12.dp))
+
                 Button(
                     onClick = {
-                        if (enteredName.isBlank()) {
-                            message = "Nama tidak boleh kosong"
-                            return@Button
-                        }
                         if (roomCodeInput.isBlank()) {
                             message = "Kode room tidak boleh kosong"
                             return@Button
@@ -177,12 +227,15 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                             val aName = snapshot.child("playerA/name").getValue(String::class.java)
                             val bName = snapshot.child("playerB/name").getValue(String::class.java)
 
-                            if (aName.isNullOrBlank() || aName == enteredName) {
-                                onJoinRoom(roomCodeInput, "playerA", enteredName)
-                            } else if (bName.isNullOrBlank() || bName == enteredName) {
-                                onJoinRoom(roomCodeInput, "playerB", enteredName)
-                            } else {
-                                message = "Room '$roomCodeInput' sudah penuh!"
+                            when {
+                                aName.isNullOrBlank() || aName == fixedName ->
+                                    onJoinRoom(roomCodeInput, "playerA")
+
+                                bName.isNullOrBlank() || bName == fixedName ->
+                                    onJoinRoom(roomCodeInput, "playerB")
+
+                                else ->
+                                    message = "Room sudah penuh!"
                             }
 
                         }.addOnFailureListener {
@@ -199,14 +252,8 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                 Text("ATAU")
                 Spacer(Modifier.height(32.dp))
 
-                // Buat Room
                 Button(
                     onClick = {
-                        if (enteredName.isBlank()) {
-                            message = "Nama tidak boleh kosong"
-                            return@Button
-                        }
-
                         val newRoomCode = generateRoomCode()
                         val roomData = mapOf(
                             "status" to "waiting",
@@ -215,7 +262,7 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
 
                         roomsRef.child(newRoomCode).setValue(roomData)
                             .addOnSuccessListener {
-                                onJoinRoom(newRoomCode, "playerA", enteredName)
+                                onJoinRoom(newRoomCode, "playerA")
                             }
                             .addOnFailureListener {
                                 message = "Gagal membuat room: ${it.message}"
@@ -223,25 +270,20 @@ fun LobbyScreen(onJoinRoom: (code: String, role: String, name: String) -> Unit) 
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4CAF50)
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
                 ) {
                     Text("BUAT ROOM BARU", fontWeight = FontWeight.Bold)
                 }
 
                 if (message.isNotBlank()) {
                     Spacer(Modifier.height(24.dp))
-                    Text(
-                        text = message,
-                        color = Color(0xFFFF6B6B),
-                        textAlign = TextAlign.Center
-                    )
+                    Text(message, color = Color.Red)
                 }
             }
         }
     }
 }
+
 
 
 
