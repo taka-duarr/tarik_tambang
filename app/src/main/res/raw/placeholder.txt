@@ -1,0 +1,3 @@
+This is a placeholder file. You can delete it. 
+
+Put your music and sound effect files (e.g., .mp3, .wav) in this 'raw' directory.
