@@ -33,7 +33,8 @@ import com.example.tarik_tambang.UserPrefs
 fun MainMenuScreen(
     onPlay: () -> Unit,
     onLeaderboard: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onProfile: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -76,7 +77,7 @@ fun MainMenuScreen(
         repeat(5) { index ->
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(3f)
+                    .fillMaxWidth()
                     .height(80.dp)
                     .offset(y = (index * 200 - offset).dp)
                     .rotate(-45f)
@@ -94,12 +95,13 @@ fun MainMenuScreen(
 
             // Persona 5 style title with skew effect
             BoxWithConstraints(
-                modifier = Modifier.fillMaxWidth(0.9f)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 val maxWidthDp = maxWidth
                 val titleFontSize = (maxWidthDp.value * 0.18f).coerceIn(36f, 72f).sp
                 val subtitleFontSize = (maxWidthDp.value * 0.04f).coerceIn(12f, 16f).sp
                 val lineWidth = maxWidthDp * 0.8f
+
 
                 Column(
                     horizontalAlignment = Alignment.Start
@@ -183,15 +185,12 @@ fun MainMenuScreen(
                 )
 
                 PersonaMenuButton(
-                    text = "LOGOUT",
+                    text = "PROFILE",
                     onClick = {
-                        // Hapus username dari SharedPreferences
-                        UserPrefs.clear(context)
-
-                        // Restart aplikasi kembali ke Login
-                        (context as? Activity)?.recreate()
+                        onProfile()
                     }
                 )
+
 
 
                 PersonaMenuButton(

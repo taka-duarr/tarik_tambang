@@ -76,7 +76,7 @@ fun LobbyScreen(
         repeat(5) { index ->
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(3f)
+                    .fillMaxWidth()
                     .height(80.dp)
                     .offset(y = (index * 200 - offset).dp)
                     .rotate(-45f)

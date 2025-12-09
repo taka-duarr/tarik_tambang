@@ -18,7 +18,11 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        buildConfigField("String", "API_URL", "\"http://10.0.2.2:8000/api/\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        //"https://zatwasdead.my.id/tarik_tambang_server/api/"
+        //"http://10.0.2.2:8000/api/"
     }
 
     buildTypes {
@@ -39,6 +43,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

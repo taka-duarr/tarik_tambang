@@ -41,11 +41,13 @@ class MainActivity : ComponentActivity() {
 
 enum class Screen {
     Login,
+    Register,
     MainMenu,
     Lobby,
     Game,
     Leaderboard,
-    Settings
+    Settings,
+    Profile
 }
 
 @Composable
@@ -91,17 +93,41 @@ fun GameNavigation() {
                 }
                 backPressedTime = System.currentTimeMillis()
             }
+            Screen.Register -> {
+                AudioManager.playSfx(R.raw.back_sfx)
+                currentScreen = Screen.Login
+            }
+            Screen.Profile -> {
+                AudioManager.playSfx(R.raw.back_sfx)
+                currentScreen = Screen.MainMenu
+            }
+
         }
     }
 
     when (currentScreen) {
         Screen.Login -> {
-            LoginScreen { username ->
-                UserPrefs.saveName(context, username)
-                savedName = username
-                currentScreen = Screen.MainMenu
-            }
+            LoginScreen(
+                onLogin = { username ->
+                    UserPrefs.saveName(context, username)
+                    savedName = username
+                    currentScreen = Screen.MainMenu
+                },
+                onRegister = {
+                    currentScreen = Screen.Register
+                }
+            )
         }
+
+
+        Screen.Register -> {
+            RegisterScreen(
+                onBackToLogin = {
+                    currentScreen = Screen.Login
+                }
+            )
+        }
+
         Screen.MainMenu -> {
             MainMenuScreen(
                 onPlay = { 
@@ -115,9 +141,31 @@ fun GameNavigation() {
                 onSettings = { 
                     AudioManager.playSfx(R.raw.button_click)
                     currentScreen = Screen.Settings 
+                },
+                onProfile = {
+                    AudioManager.playSfx(R.raw.button_click)
+                    currentScreen = Screen.Profile
                 }
             )
         }
+        Screen.Profile -> {
+            ProfileScreen(
+                username = savedName ?: "",
+                onUsernameUpdated = { newName ->
+                    UserPrefs.saveName(context, newName)
+                    savedName = newName
+                },
+                onLogout = {
+                    UserPrefs.clear(context)
+                    savedName = null
+                    currentScreen = Screen.Login
+                },
+                onBack = {
+                    currentScreen = Screen.MainMenu
+                }
+            )
+        }
+
         Screen.Lobby -> {
             LobbyScreen(
                 fixedName = savedName!!,

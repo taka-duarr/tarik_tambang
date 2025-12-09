@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,31 +17,29 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
 import com.example.tarik_tambang.api.ApiClient
-import com.example.tarik_tambang.api.LoginResponse
-import com.example.tarik_tambang.UserPrefs
+import com.example.tarik_tambang.api.RegisterResponse
+
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.clickable
-
-
-
 
 
 @Composable
-
-fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
-    val context = LocalContext.current
-
+fun RegisterScreen(
+    onBackToLogin: () -> Unit,
+) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
@@ -61,7 +60,7 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Gradient background
+        // Gradient Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -75,7 +74,7 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                 .alpha(0.8f)
         )
 
-        // Moving diagonal lines
+        // Moving Stripes
         repeat(5) { index ->
             Box(
                 modifier = Modifier
@@ -95,13 +94,12 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
 
-            // Title
             Text(
-                text = "TARIK TAMBANG",
-                fontSize = 48.sp,
+                text = "REGISTER",
+                fontSize = 42.sp,
                 fontWeight = FontWeight.Black,
                 color = Color.White,
-                style = LocalTextStyle.current.copy(
+                style = TextStyle(
                     shadow = Shadow(
                         color = Color.Black,
                         offset = Offset(4f, 4f),
@@ -111,9 +109,8 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
             )
 
 
-            Spacer(Modifier.height(48.dp))
+            Spacer(Modifier.height(36.dp))
 
-            // Login Card
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
@@ -128,22 +125,20 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
 
-                    Text(
-                        text = "LOGIN",
-                        fontSize = 30.sp,
-                        color = Color.White,
-                        fontWeight = FontWeight.Black
-                    )
-
-                    Spacer(Modifier.height(32.dp))
-
                     // Username
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it.trim() },
                         label = { Text("USERNAME", fontWeight = FontWeight.Bold) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFE60012),
+                            unfocusedBorderColor = Color(0xFF444444),
+                            cursorColor = Color(0xFFE60012),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
                     )
 
                     Spacer(Modifier.height(16.dp))
@@ -151,7 +146,7 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                     // Password
                     OutlinedTextField(
                         value = password,
-                        onValueChange = { newValue -> password = newValue.trim() },
+                        onValueChange = { password = it.trim() },
                         label = { Text("PASSWORD", fontWeight = FontWeight.Bold) },
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -166,50 +161,64 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                         )
                     )
 
+                    Spacer(Modifier.height(16.dp))
+
+                    // Confirm Password
+                    OutlinedTextField(
+                        value = confirmPassword,
+                        onValueChange = { confirmPassword = it.trim() },
+                        label = { Text("CONFIRM PASSWORD", fontWeight = FontWeight.Bold) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFE60012),
+                            unfocusedBorderColor = Color(0xFF444444),
+                            cursorColor = Color(0xFFE60012),
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        )
+                    )
 
                     Spacer(Modifier.height(24.dp))
 
-                    // LOGIN BUTTON
+                    // REGISTER Button
                     Button(
                         onClick = {
-                            if (username.isBlank() || password.isBlank()) {
-                                message = "Username dan password tidak boleh kosong"
+                            if (username.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
+                                message = "Semua field harus diisi."
+                                return@Button
+                            }
+
+                            if (password != confirmPassword) {
+                                message = "Password tidak sama."
                                 return@Button
                             }
 
                             loading = true
                             message = ""
 
-                            ApiClient.instance.login(username, password)
-                                .enqueue(object : Callback<LoginResponse> {
-
+                            ApiClient.instance.register(username, password)
+                                .enqueue(object : Callback<RegisterResponse> {
                                     override fun onResponse(
-                                        call: Call<LoginResponse>,
-                                        response: Response<LoginResponse>
+                                        call: Call<RegisterResponse>,
+                                        response: Response<RegisterResponse>
                                     ) {
                                         loading = false
                                         val res = response.body()
 
                                         if (res != null && res.success) {
-
-                                            val userNameFromApi = res.user?.username ?: ""
-
-                                            // Simpan ke SharedPreferences
-                                            UserPrefs.saveName(context, userNameFromApi)
-
-                                            // Lanjut ke halaman berikut
-                                            onLogin(userNameFromApi)
-
+                                            message = "Registrasi berhasil! Silakan login."
                                         } else {
-                                            message = res?.message ?: "Login gagal"
+                                            message = res?.message ?: "Gagal registrasi."
                                         }
                                     }
 
-                                    override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                                    override fun onFailure(call: Call<RegisterResponse>, t: Throwable) {
                                         loading = false
-                                        message = t.message ?: "Tidak dapat terhubung ke server"
+                                        message = "Tidak dapat terhubung ke server."
                                     }
-
                                 })
                         },
                         modifier = Modifier
@@ -218,25 +227,28 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE60012))
                     ) {
                         Text(
-                            text = if (loading) "Loading..." else "LOGIN",
+                            text = if (loading) "Loading..." else "REGISTER",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
                             color = Color.White
                         )
                     }
 
-                    Text(
-                        text = "Belum punya akun? REGISTER",
-                        color = Color(0xFFE60012),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
-                        modifier = Modifier.clickable { onRegister() }
-                    )
+                    Spacer(Modifier.height(16.dp))
 
-                    // Error Message
+                    // Go back to login
+                    TextButton(onClick = onBackToLogin) {
+                        Text("Sudah punya akun? Login", color = Color.White)
+                    }
+
+                    // Error / Success Message
                     if (message.isNotEmpty()) {
                         Spacer(Modifier.height(16.dp))
-                        Text(message, color = Color.Red, fontWeight = FontWeight.Bold)
+                        Text(
+                            message,
+                            color = if (message.contains("berhasil", true)) Color.Green else Color.Red,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
