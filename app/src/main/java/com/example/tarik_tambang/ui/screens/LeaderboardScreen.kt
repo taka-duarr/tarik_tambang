@@ -25,6 +25,12 @@ import androidx.compose.ui.unit.sp
 import com.example.tarik_tambang.data.PlayerScore
 import com.example.tarik_tambang.ui.components.BackButton
 import com.google.firebase.database.FirebaseDatabase
+import com.example.tarik_tambang.api.ApiClient
+import com.example.tarik_tambang.api.LeaderboardResponse
+import com.example.tarik_tambang.api.ApiService
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 @Composable
 fun LeaderboardScreen(onBack: () -> Unit) {
@@ -43,17 +49,30 @@ fun LeaderboardScreen(onBack: () -> Unit) {
         label = "offset"
     )
 
-    // Ambil data dari Firebase
-    LaunchedEffect(Unit) {
-        val dbRef = FirebaseDatabase.getInstance().getReference("users")
-        dbRef.orderByChild("score").limitToLast(100).get().addOnSuccessListener { dataSnapshot ->
-            val scores = dataSnapshot.children.mapNotNull { it.getValue(PlayerScore::class.java) }
-            leaderboard = scores.sortedByDescending { it.score }
-            isLoading = false
-        }.addOnFailureListener {
-            isLoading = false
+    // Ambil data dari mysql
+        LaunchedEffect(Unit) {
+            ApiClient.instance.getLeaderboard()
+                .enqueue(object : Callback<LeaderboardResponse> {
+
+                    override fun onResponse(
+                        call: Call<LeaderboardResponse>,
+                        response: Response<LeaderboardResponse>
+                    ) {
+                        val body = response.body()
+                        if (body != null && body.success) {
+                            leaderboard = body.leaderboard.map {
+                                PlayerScore(it.username, it.wins)
+                            }
+                        }
+                        isLoading = false
+                    }
+
+                    override fun onFailure(call: Call<LeaderboardResponse>, t: Throwable) {
+                        isLoading = false
+                    }
+                })
         }
-    }
+
 
     Box(
         modifier = Modifier
@@ -177,8 +196,8 @@ fun LeaderboardScreen(onBack: () -> Unit) {
                     itemsIndexed(leaderboard) { index, playerScore ->
                         PersonaLeaderboardItem(
                             rank = index + 1,
-                            name = playerScore.name,
-                            score = playerScore.score
+                            name = playerScore.username,
+                            score = playerScore.wins
                         )
                     }
                 }
@@ -352,7 +371,7 @@ private fun PersonaLeaderboardItem(rank: Int, name: String, score: Int) {
                         )
                     )
                     Text(
-                        text = "PTS",
+                        text = "WINS",
                         color = if (isTopThree) {
                             Color.White.copy(alpha = 0.8f)
                         } else {

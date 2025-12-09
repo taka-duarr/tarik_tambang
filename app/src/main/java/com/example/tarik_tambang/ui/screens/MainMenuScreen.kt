@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tarik_tambang.R
 import com.example.tarik_tambang.audio.AudioManager
+import com.example.tarik_tambang.UserPrefs
 
 @Composable
 fun MainMenuScreen(
@@ -180,6 +181,18 @@ fun MainMenuScreen(
                     text = "SETTINGS",
                     onClick = onSettings
                 )
+
+                PersonaMenuButton(
+                    text = "LOGOUT",
+                    onClick = {
+                        // Hapus username dari SharedPreferences
+                        UserPrefs.clear(context)
+
+                        // Restart aplikasi kembali ke Login
+                        (context as? Activity)?.recreate()
+                    }
+                )
+
 
                 PersonaMenuButton(
                     text = "QUIT",

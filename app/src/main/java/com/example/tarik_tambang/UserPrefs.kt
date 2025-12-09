@@ -30,4 +30,12 @@ object UserPrefs {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getFloat(MUSIC_VOLUME_KEY, 0.5f) // Default volume 50%
     }
+
+    fun clear(context: Context) {
+        context.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
+            .edit()
+            .clear()
+            .apply()
+    }
+
 }
