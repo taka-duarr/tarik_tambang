@@ -16,21 +16,64 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-
 import com.example.tarik_tambang.api.ApiClient
 import com.example.tarik_tambang.api.RegisterResponse
-
+import kotlinx.coroutines.delay
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
+private fun registerUser(
+    username: String,
+    pass: String,
+    confirmPass: String,
+    setLoading: (Boolean) -> Unit,
+    setMessage: (String) -> Unit,
+    setSuccess: (Boolean) -> Unit
+) {
+    if (username.isBlank() || pass.isBlank() || confirmPass.isBlank()) {
+        setMessage("Semua field harus diisi.")
+        return
+    }
+
+    if (pass != confirmPass) {
+        setMessage("Password tidak sama.")
+        return
+    }
+
+    setLoading(true)
+    setMessage("")
+
+    ApiClient.instance.register(username, pass)
+        .enqueue(object : Callback<RegisterResponse> {
+            override fun onResponse(
+                call: Call<RegisterResponse>,
+                response: Response<RegisterResponse>
+            ) {
+                setLoading(false)
+                val res = response.body()
+
+                if (res != null && res.success) {
+                    setMessage("Registrasi berhasil! Mengarahkan ke login...")
+                    setSuccess(true)
+                } else {
+                    setMessage(res?.message ?: "Gagal registrasi.")
+                }
+            }
+
+            override fun onFailure(call: Call<RegisterResponse>, t: Throwable) {
+                setLoading(false)
+                setMessage("Tidak dapat terhubung ke server.")
+            }
+        })
+}
 
 @Composable
 fun RegisterScreen(
@@ -39,11 +82,17 @@ fun RegisterScreen(
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
+    var registrationSuccess by remember { mutableStateOf(false) }
 
-    // Background animation
+    if (registrationSuccess) {
+        LaunchedEffect(Unit) {
+            delay(2000)
+            onBackToLogin()
+        }
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
     val offset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -60,7 +109,6 @@ fun RegisterScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Gradient Background
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -74,13 +122,12 @@ fun RegisterScreen(
                 .alpha(0.8f)
         )
 
-        // Moving Stripes
         repeat(5) { index ->
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
                     .height(80.dp)
-                    .offset(y = (index * 200 - offset).dp)
+                    .offset(y = (index * 200f - offset).dp)
                     .rotate(-45f)
                     .background(Color.Red.copy(alpha = 0.08f))
             )
@@ -93,7 +140,6 @@ fun RegisterScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-
             Text(
                 text = "REGISTER",
                 fontSize = 42.sp,
@@ -107,7 +153,6 @@ fun RegisterScreen(
                     )
                 )
             )
-
 
             Spacer(Modifier.height(36.dp))
 
@@ -124,8 +169,6 @@ fun RegisterScreen(
                     modifier = Modifier.padding(32.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-
-                    // Username
                     OutlinedTextField(
                         value = username,
                         onValueChange = { username = it.trim() },
@@ -140,10 +183,7 @@ fun RegisterScreen(
                             unfocusedTextColor = Color.White
                         )
                     )
-
                     Spacer(Modifier.height(16.dp))
-
-                    // Password
                     OutlinedTextField(
                         value = password,
                         onValueChange = { password = it.trim() },
@@ -160,10 +200,7 @@ fun RegisterScreen(
                             unfocusedTextColor = Color.White
                         )
                     )
-
                     Spacer(Modifier.height(16.dp))
-
-                    // Confirm Password
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it.trim() },
@@ -180,46 +217,18 @@ fun RegisterScreen(
                             unfocusedTextColor = Color.White
                         )
                     )
-
                     Spacer(Modifier.height(24.dp))
 
-                    // REGISTER Button
                     Button(
                         onClick = {
-                            if (username.isBlank() || password.isBlank() || confirmPassword.isBlank()) {
-                                message = "Semua field harus diisi."
-                                return@Button
-                            }
-
-                            if (password != confirmPassword) {
-                                message = "Password tidak sama."
-                                return@Button
-                            }
-
-                            loading = true
-                            message = ""
-
-                            ApiClient.instance.register(username, password)
-                                .enqueue(object : Callback<RegisterResponse> {
-                                    override fun onResponse(
-                                        call: Call<RegisterResponse>,
-                                        response: Response<RegisterResponse>
-                                    ) {
-                                        loading = false
-                                        val res = response.body()
-
-                                        if (res != null && res.success) {
-                                            message = "Registrasi berhasil! Silakan login."
-                                        } else {
-                                            message = res?.message ?: "Gagal registrasi."
-                                        }
-                                    }
-
-                                    override fun onFailure(call: Call<RegisterResponse>, t: Throwable) {
-                                        loading = false
-                                        message = "Tidak dapat terhubung ke server."
-                                    }
-                                })
+                            registerUser(
+                                username = username,
+                                pass = password,
+                                confirmPass = confirmPassword,
+                                setLoading = { loading = it },
+                                setMessage = { message = it },
+                                setSuccess = { registrationSuccess = it }
+                            )
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -236,12 +245,10 @@ fun RegisterScreen(
 
                     Spacer(Modifier.height(16.dp))
 
-                    // Go back to login
                     TextButton(onClick = onBackToLogin) {
                         Text("Sudah punya akun? Login", color = Color.White)
                     }
 
-                    // Error / Success Message
                     if (message.isNotEmpty()) {
                         Spacer(Modifier.height(16.dp))
                         Text(
@@ -254,4 +261,10 @@ fun RegisterScreen(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun RegisterScreenPreview() {
+    RegisterScreen(onBackToLogin = {})
 }

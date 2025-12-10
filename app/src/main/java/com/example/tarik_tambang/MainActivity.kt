@@ -47,7 +47,8 @@ enum class Screen {
     Game,
     Leaderboard,
     Settings,
-    Profile
+    Profile,
+    Update
 }
 
 @Composable
@@ -62,6 +63,7 @@ fun GameNavigation() {
 
     var currentScreen by remember { mutableStateOf(Screen.Login) }
     var savedName by remember { mutableStateOf(UserPrefs.getName(context)) }
+    var userWins by remember { mutableStateOf(UserPrefs.getWins(context)) }
     var activeRoomCode by remember { mutableStateOf<String?>(null) }
     var activeRole by remember { mutableStateOf<String?>(null) }
 
@@ -75,7 +77,7 @@ fun GameNavigation() {
     // Handle System Back Press
     BackHandler {
         when (currentScreen) {
-            Screen.Lobby, Screen.Leaderboard, Screen.Settings -> {
+            Screen.Lobby, Screen.Leaderboard, Screen.Settings, Screen.Profile -> {
                 AudioManager.playSfx(R.raw.back_sfx)
                 currentScreen = Screen.MainMenu
             }
@@ -97,9 +99,9 @@ fun GameNavigation() {
                 AudioManager.playSfx(R.raw.back_sfx)
                 currentScreen = Screen.Login
             }
-            Screen.Profile -> {
+            Screen.Update -> {
                 AudioManager.playSfx(R.raw.back_sfx)
-                currentScreen = Screen.MainMenu
+                currentScreen = Screen.Profile
             }
 
         }
@@ -118,7 +120,6 @@ fun GameNavigation() {
                 }
             )
         }
-
 
         Screen.Register -> {
             RegisterScreen(
@@ -151,9 +152,9 @@ fun GameNavigation() {
         Screen.Profile -> {
             ProfileScreen(
                 username = savedName ?: "",
-                onUsernameUpdated = { newName ->
-                    UserPrefs.saveName(context, newName)
-                    savedName = newName
+                wins = userWins,
+                onUpdateClick = {
+                    currentScreen = Screen.Update
                 },
                 onLogout = {
                     UserPrefs.clear(context)
@@ -166,6 +167,20 @@ fun GameNavigation() {
             )
         }
 
+        Screen.Update -> {
+            UpdateScreen(
+                currentUsername = savedName ?: "",
+                onUpdateSuccess = { newName ->
+                    UserPrefs.saveName(context, newName)
+                    savedName = newName
+                    currentScreen = Screen.Profile
+                },
+                onBack = {
+                    currentScreen = Screen.Profile
+                }
+            )
+        }
+
         Screen.Lobby -> {
             LobbyScreen(
                 fixedName = savedName!!,
@@ -174,6 +189,10 @@ fun GameNavigation() {
                     activeRoomCode = code
                     activeRole = role
                     currentScreen = Screen.Game
+                },
+                onProfileClick = {
+                    AudioManager.playSfx(R.raw.button_click)
+                    currentScreen = Screen.Profile
                 },
                 onBack = { 
                     AudioManager.playSfx(R.raw.back_sfx)

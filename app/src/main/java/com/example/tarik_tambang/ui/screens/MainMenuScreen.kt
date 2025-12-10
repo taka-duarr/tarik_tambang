@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tarik_tambang.R
@@ -79,7 +80,7 @@ fun MainMenuScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .offset(y = (index * 200 - offset).dp)
+                    .offset(y = (index * 200f - offset).dp)
                     .rotate(-45f)
                     .background(Color.Red.copy(alpha = 0.1f))
             )
@@ -345,4 +346,15 @@ private fun PersonaMenuButton(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MainMenuScreenPreview() {
+    MainMenuScreen(
+        onPlay = {},
+        onLeaderboard = {},
+        onSettings = {},
+        onProfile = {}
+    )
 }

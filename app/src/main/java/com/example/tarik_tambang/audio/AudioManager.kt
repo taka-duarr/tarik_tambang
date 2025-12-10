@@ -12,6 +12,7 @@ object AudioManager {
     private var backgroundMusicPlayer: MediaPlayer? = null
     private var soundPool: SoundPool? = null
     private val sfxMap = mutableMapOf<Int, Int>()
+    private var sfxVolume = 1.0f
 
     // --- Background Music Controls ---
 
@@ -68,6 +69,8 @@ object AudioManager {
     fun initializeSfx(context: Context) {
         if (soundPool != null) return // Sudah diinisialisasi
 
+        sfxVolume = UserPrefs.getSfxVolume(context)
+
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_GAME)
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
@@ -81,10 +84,17 @@ object AudioManager {
         sfxMap[R.raw.ready_sfx] = soundPool?.load(context, R.raw.ready_sfx, 1) ?: 0
     }
 
-    fun playSfx(sfxId: Int, volume: Float = 1.0f) {
+    fun playSfx(sfxId: Int) {
         sfxMap[sfxId]?.let { soundId ->
-            soundPool?.play(soundId, volume, volume, 1, 0, 1.0f)
+            soundPool?.play(soundId, sfxVolume, sfxVolume, 1, 0, 1.0f)
         }
+    }
+
+    fun setSfxVolume(context: Context, volume: Float) {
+        sfxVolume = volume
+        UserPrefs.saveSfxVolume(context, volume)
+        // Optionally, play a sample sound to preview the new volume
+        playSfx(R.raw.button_click)
     }
 
     fun releaseSfx() {

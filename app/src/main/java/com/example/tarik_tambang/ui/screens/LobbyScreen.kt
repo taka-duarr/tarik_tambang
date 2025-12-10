@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,10 +18,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tarik_tambang.R
 import com.example.tarik_tambang.ui.components.BackButton
 import com.example.tarik_tambang.util.generateRoomCode
 import com.google.firebase.database.FirebaseDatabase
@@ -30,7 +34,8 @@ import com.google.firebase.database.ServerValue
 fun LobbyScreen(
     fixedName: String,
     onJoinRoom: (code: String, role: String) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     val roomsRef = remember { FirebaseDatabase.getInstance().getReference("rooms") }
 
@@ -78,7 +83,7 @@ fun LobbyScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(80.dp)
-                    .offset(y = (index * 200 - offset).dp)
+                    .offset(y = (index * 200f - offset).dp)
                     .rotate(-45f)
                     .background(Color.Red.copy(alpha = 0.1f))
             )
@@ -128,16 +133,40 @@ fun LobbyScreen(
 
             Spacer(Modifier.height(16.dp))
 
-            // Welcome text
-            Text(
-                text = "Welcome, $fixedName!",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    letterSpacing = 1.sp,
-                    color = Color(0xFFE60012)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Welcome text
+                Text(
+                    text = "Welcome, $fixedName!",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp,
+                        letterSpacing = 1.sp,
+                        color = Color(0xFFE60012)
+                    )
                 )
-            )
+
+                Spacer(Modifier.width(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .border(1.dp, Color(0xFFE60012), CircleShape)
+                        .clickable { onProfileClick() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_profile),
+                        contentDescription = "Profile",
+                        tint = Color(0xFFE60012),
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
 
             Spacer(Modifier.height(32.dp))
 
@@ -340,4 +369,15 @@ private fun PersonaButton(
             )
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LobbyScreenPreview() {
+    LobbyScreen(
+        fixedName = "AndroidDev",
+        onJoinRoom = { _, _ -> },
+        onBack = {},
+        onProfileClick = {}
+    )
 }

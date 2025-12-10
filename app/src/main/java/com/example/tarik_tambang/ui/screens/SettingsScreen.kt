@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tarik_tambang.UserPrefs
@@ -28,9 +29,8 @@ import com.example.tarik_tambang.ui.components.BackButton
 fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
 
-    // Ambil nilai volume dari UserPrefs sebagai nilai awal
     var musicVolume by remember { mutableStateOf(UserPrefs.getMusicVolume(context)) }
-    var sfxVolume by remember { mutableStateOf(1.0f) } // SFX belum diimplementasikan penyimpanannya
+    var sfxVolume by remember { mutableStateOf(UserPrefs.getSfxVolume(context)) }
 
     // Animasi diagonal stripes
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
@@ -73,7 +73,7 @@ fun SettingsScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth(3f)
                     .height(80.dp)
-                    .offset(y = (index * 200 - offset).dp)
+                    .offset(y = (index * 200f - offset).dp)
                     .rotate(-45f)
                     .background(Color.Red.copy(alpha = 0.1f))
             )
@@ -145,7 +145,10 @@ fun SettingsScreen(onBack: () -> Unit) {
                     label = "SFX VOLUME",
                     icon = "🔊",
                     value = sfxVolume,
-                    onValueChange = { sfxVolume = it } // Note: SFX volume saving not implemented yet
+                    onValueChange = { 
+                        sfxVolume = it
+                        AudioManager.setSfxVolume(context, it)
+                    }
                 )
             }
         }
@@ -268,4 +271,10 @@ private fun PersonaVolumeControl(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun SettingsScreenPreview() {
+    SettingsScreen(onBack = {})
 }

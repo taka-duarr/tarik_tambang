@@ -22,20 +22,19 @@ import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tarik_tambang.data.PlayerScore
 import com.example.tarik_tambang.ui.components.BackButton
-import com.google.firebase.database.FirebaseDatabase
 import com.example.tarik_tambang.api.ApiClient
 import com.example.tarik_tambang.api.LeaderboardResponse
-import com.example.tarik_tambang.api.ApiService
+import com.example.tarik_tambang.api.LeaderboardPlayer
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
 
 @Composable
 fun LeaderboardScreen(onBack: () -> Unit) {
-    var leaderboard by remember { mutableStateOf<List<PlayerScore>>(emptyList()) }
+    var leaderboard by remember { mutableStateOf<List<LeaderboardPlayer>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Animasi diagonal stripes
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
@@ -50,29 +49,28 @@ fun LeaderboardScreen(onBack: () -> Unit) {
     )
 
     // Ambil data dari mysql
-        LaunchedEffect(Unit) {
-            ApiClient.instance.getLeaderboard()
-                .enqueue(object : Callback<LeaderboardResponse> {
-
-                    override fun onResponse(
-                        call: Call<LeaderboardResponse>,
-                        response: Response<LeaderboardResponse>
-                    ) {
-                        val body = response.body()
-                        if (body != null && body.success) {
-                            leaderboard = body.leaderboard.map {
-                                PlayerScore(it.username, it.wins)
-                            }
-                        }
-                        isLoading = false
+    LaunchedEffect(Unit) {
+        ApiClient.instance.getLeaderboard()
+            .enqueue(object : Callback<LeaderboardResponse> {
+                override fun onResponse(
+                    call: Call<LeaderboardResponse>,
+                    response: Response<LeaderboardResponse>
+                ) {
+                    val body = response.body()
+                    if (response.isSuccessful && body != null && body.success) {
+                        leaderboard = body.leaderboard
+                    } else {
+                        errorMessage = "Failed to load leaderboard. Please try again later."
                     }
+                    isLoading = false
+                }
 
-                    override fun onFailure(call: Call<LeaderboardResponse>, t: Throwable) {
-                        isLoading = false
-                    }
-                })
-        }
-
+                override fun onFailure(call: Call<LeaderboardResponse>, t: Throwable) {
+                    errorMessage = "Failed to connect to the server. Please check your internet connection."
+                    isLoading = false
+                }
+            })
+    }
 
     Box(
         modifier = Modifier
@@ -103,7 +101,7 @@ fun LeaderboardScreen(onBack: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth(3f)
                     .height(80.dp)
-                    .offset(y = (index * 200 - offset).dp)
+                    .offset(y = (index * 200f - offset).dp)
                     .rotate(-45f)
                     .background(Color.Red.copy(alpha = 0.1f))
             )
@@ -168,37 +166,54 @@ fun LeaderboardScreen(onBack: () -> Unit) {
 
             Spacer(Modifier.height(32.dp))
 
-            if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator(
-                            color = Color(0xFFE60012),
-                            strokeWidth = 4.dp
-                        )
-                        Spacer(Modifier.height(16.dp))
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = Color(0xFFE60012),
+                                strokeWidth = 4.dp
+                            )
+                            Spacer(Modifier.height(16.dp))
+                            Text(
+                                text = "LOADING...",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp,
+                                letterSpacing = 3.sp
+                            )
+                        }
+                    }
+                }
+                errorMessage != null -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            text = "LOADING...",
-                            color = Color.White,
+                            text = errorMessage!!,
+                            color = Color.Red,
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             letterSpacing = 3.sp
                         )
                     }
                 }
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(bottom = 80.dp)
-                ) {
-                    itemsIndexed(leaderboard) { index, playerScore ->
-                        PersonaLeaderboardItem(
-                            rank = index + 1,
-                            name = playerScore.username,
-                            score = playerScore.wins
-                        )
+                else -> {
+                    LazyColumn(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(bottom = 80.dp)
+                    ) {
+                        itemsIndexed(leaderboard) { index, player ->
+                            PersonaLeaderboardItem(
+                                rank = index + 1,
+                                name = player.username,
+                                score = player.wins
+                            )
+                        }
                     }
                 }
             }

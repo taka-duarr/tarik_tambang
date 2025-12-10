@@ -1,5 +1,6 @@
 package com.example.tarik_tambang.ui.screens
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -31,11 +32,33 @@ import com.example.tarik_tambang.R
 import com.example.tarik_tambang.audio.AudioManager
 import com.example.tarik_tambang.ui.components.BackButton
 import com.example.tarik_tambang.ui.components.PlayerCard
-import com.example.tarik_tambang.util.generateNewQuestion
-import com.example.tarik_tambang.util.simpleIntListener
-import com.example.tarik_tambang.util.simpleStringListener
 import com.google.firebase.database.*
+import kotlinx.coroutines.delay
 
+// --- Helper Functions ---
+
+fun simpleStringListener(onValue: (String?) -> Unit) = object : ValueEventListener {
+    override fun onDataChange(snapshot: DataSnapshot) = onValue(snapshot.getValue(String::class.java))
+    override fun onCancelled(error: DatabaseError) = onValue(null)
+}
+
+fun simpleIntListener(onValue: (Int?) -> Unit) = object : ValueEventListener {
+    override fun onDataChange(snapshot: DataSnapshot) = onValue(snapshot.getValue(Int::class.java))
+    override fun onCancelled(error: DatabaseError) = onValue(null)
+}
+
+fun generateNewQuestion(roomRef: DatabaseReference) {
+    val num1 = (1..20).random()
+    val num2 = (1..20).random()
+    roomRef.updateChildren(mapOf(
+        "currentQuestion" to "$num1 + $num2 = ?",
+        "currentAnswer" to num1 + num2
+    ))
+}
+
+// --- Composables ---
+
+@SuppressLint("Range")
 @Composable
 fun ActiveGameScreen(
     roomCode: String,
@@ -43,34 +66,37 @@ fun ActiveGameScreen(
     myName: String,
     onLeaveRoom: () -> Unit
 ) {
-    val roomRef = remember(roomCode) {
-        FirebaseDatabase.getInstance().getReference("rooms/$roomCode")
-    }
+    val roomRef = remember { FirebaseDatabase.getInstance().getReference("rooms").child(roomCode) }
 
-    // State
     var playerAName by remember { mutableStateOf("") }
-    var playerBName by remember { mutableStateOf("") }
     var playerAScore by remember { mutableStateOf(0) }
+    val playerAReady = remember { mutableStateOf(false) }
+
+    var playerBName by remember { mutableStateOf("") }
     var playerBScore by remember { mutableStateOf(0) }
+    val playerBReady = remember { mutableStateOf(false) }
+
     var status by remember { mutableStateOf("waiting") }
     var winner by remember { mutableStateOf("") }
-    var message by remember { mutableStateOf("") }
-    val playerAReady = remember { mutableStateOf(false) }
-    val playerBReady = remember { mutableStateOf(false) }
     var questionText by remember { mutableStateOf("Menunggu soal...") }
     var userAnswer by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf("") }
 
     // Animations
-    val infiniteTransition = rememberInfiniteTransition(label = "bg")
-    val offset by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 100f, animationSpec = infiniteRepeatable(animation = tween(3000, easing = LinearEasing), repeatMode = RepeatMode.Restart), label = "offset")
-    val pulseScale by infiniteTransition.animateFloat(initialValue = 1f, targetValue = 1.05f, animationSpec = infiniteRepeatable(animation = tween(800, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse), label = "pulse")
-    val ropePosition by animateFloatAsState(targetValue = when { playerAScore > playerBScore -> -20f * (playerAScore - playerBScore).coerceAtMost(5); playerBScore > playerAScore -> 20f * (playerBScore - playerAScore).coerceAtMost(5); else -> 0f }, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow), label = "rope")
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val offset by infiniteTransition.animateFloat(initialValue = 0f, targetValue = 100f, animationSpec = infiniteRepeatable(animation = tween(3000, easing = LinearEasing), repeatMode = RepeatMode.Restart), label = "")
+    val pulseScale by infiniteTransition.animateFloat(initialValue = 1f, targetValue = 1.05f, animationSpec = infiniteRepeatable(animation = tween(1000, easing = FastOutSlowInEasing), repeatMode = RepeatMode.Reverse), label = "")
 
-    // Setup & Listeners
-    LaunchedEffect(roomRef, myRole, myName) {
-        roomRef.child(myRole).updateChildren(mapOf("name" to myName, "score" to 0, "ready" to 0))
-        roomRef.child("status").get().addOnSuccessListener {
-            if (it.getValue(String::class.java) != "playing") roomRef.child("status").setValue("waiting")
+    val ropePosition by animateFloatAsState(targetValue = ((playerBScore - playerAScore) * 15).toFloat().coerceIn(-130f, 130f), animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow), label = "")
+
+    // Firebase Listeners
+    DisposableEffect(roomCode) {
+        val nameListener = roomRef.child("$myRole/name").addValueEventListener(simpleStringListener { if(it.isNullOrBlank()) roomRef.child("$myRole/name").setValue(myName) })
+        onDispose { roomRef.child("$myRole/name").removeEventListener(nameListener) }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            roomRef.child("status").onDisconnect().setValue("waiting")
         }
     }
     LaunchedEffect(roomRef) {
@@ -88,7 +114,7 @@ fun ActiveGameScreen(
     // UI
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFFCC0000), Color(0xFF990000), Color.Black), start = Offset(0f, 0f), end = Offset(1000f, 1000f))).alpha(0.7f))
-        repeat(5) { index -> Box(modifier = Modifier.fillMaxWidth(3f).height(80.dp).offset(y = (index * 200 - offset).dp).rotate(-45f).background(Color.Red.copy(alpha = 0.1f))) }
+        repeat(5) { index -> Box(modifier = Modifier.fillMaxWidth(3f).height(80.dp).offset(y = (index * 200f - offset).dp).rotate(-45f).background(Color.Red.copy(alpha = 0.1f))) }
 
         Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Header(roomCode = roomCode)
@@ -152,8 +178,8 @@ private fun Header(roomCode: String) {
 private fun PlayerSection(playerAName: String, playerBName: String, playerAScore: Int, playerBScore: Int, playerAReady: Boolean, playerBReady: Boolean, myRole: String, ropePosition: Float) {
     Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            PlayerCard(playerName = playerAName.ifEmpty { "Waiting..." }, score = playerAScore, isReady = playerAReady, playerLabel = "PLAYER A", color = Color(0xFFFF6B6B), isActive = myRole == "playerA")
-            PlayerCard(playerName = playerBName.ifEmpty { "Waiting..." }, score = playerBScore, isReady = playerBReady, playerLabel = "PLAYER B", color = Color(0xFF4ECDC4), isActive = myRole == "playerB")
+            PlayerCard(playerName = playerAName.ifEmpty { "Waiting..." }, score = playerAScore, isReady = playerAReady, color = Color(0xFFFF6B6B), isActive = myRole == "playerA")
+            PlayerCard(playerName = playerBName.ifEmpty { "Waiting..." }, score = playerBScore, isReady = playerBReady, color = Color(0xFF4ECDC4), isActive = myRole == "playerB")
         }
         Spacer(Modifier.height(16.dp))
         Box(modifier = Modifier.fillMaxWidth(0.9f).height(60.dp), contentAlignment = Alignment.Center) {
@@ -285,18 +311,80 @@ private fun PlayingContent(questionText: String, userAnswer: String, onUserAnswe
 @Composable
 private fun WaitingContent(myReadyState: Boolean, pulseScale: Float, onReadyClick: () -> Unit) {
     if (!myReadyState) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("⚡ READY TO BATTLE?", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Black, fontSize = 24.sp, color = Color.White, letterSpacing = 1.sp))
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Text("⚡", fontSize = 64.sp)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Ready to Battle?",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Black,
+                    fontSize = 28.sp,
+                    color = Color.White,
+                    letterSpacing = 1.sp,
+                    shadow = Shadow(color = Color.Black, offset = Offset(2f, 2f), blurRadius = 4f)
+                )
+            )
             Spacer(Modifier.height(24.dp))
-            Button(onClick = onReadyClick, modifier = Modifier.fillMaxWidth(0.8f).height(64.dp).scale(pulseScale), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE60012)), shape = RoundedCornerShape(12.dp)) {
+            Button(
+                onClick = onReadyClick,
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .height(64.dp)
+                    .scale(pulseScale),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFFE60012),
+                    contentColor = Color.White
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(8.dp)
+            ) {
                 Text("I'M READY!", fontSize = 22.sp, fontWeight = FontWeight.Black, letterSpacing = 1.sp)
             }
         }
     } else {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.scale(pulseScale)) {
-            Text("⏳", fontSize = 64.sp)
-            Spacer(Modifier.height(16.dp))
-            Text("WAITING FOR OPPONENT...", style = MaterialTheme.typography.titleLarge.copy(color = Color(0xFF999999), fontWeight = FontWeight.Bold, letterSpacing = 1.sp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally, 
+            verticalArrangement = Arrangement.Center
+        ) {
+            PulsingDots()
+            Spacer(Modifier.height(24.dp))
+            Text(
+                text = "WAITING FOR OPPONENT...",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    color = Color.White.copy(alpha = 0.8f),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp,
+                    shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 2f)
+                )
+            )
+        }
+    }
+}
+
+@Composable
+fun PulsingDots() {
+    val infiniteTransition = rememberInfiniteTransition(label = "")
+    val dotScales = (1..3).map { index ->
+        infiniteTransition.animateFloat(
+            initialValue = 0.5f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = keyframes {
+                    durationMillis = 1200
+                    0.5f at 0
+                    1f at 300
+                    0.5f at 600
+                    0.5f at 1200
+                },
+                repeatMode = RepeatMode.Restart,
+                initialStartOffset = StartOffset(index * 200)
+            ), label = ""
+        )
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        dotScales.forEach {
+            Box(modifier = Modifier.size(20.dp).scale(it.value).background(Color(0xFFE60012), CircleShape))
         }
     }
 }

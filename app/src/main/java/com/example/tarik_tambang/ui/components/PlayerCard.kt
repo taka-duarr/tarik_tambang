@@ -21,7 +21,6 @@ fun PlayerCard(
     playerName: String,
     score: Int,
     isReady: Boolean,
-    playerLabel: String,
     color: Color,
     isActive: Boolean
 ) {
@@ -45,14 +44,7 @@ fun PlayerCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                Text(
-                    text = playerLabel,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White.copy(alpha = 0.9f)
-                )
                 if (isReady) {
-                    Spacer(Modifier.width(4.dp))
                     Text("✅", fontSize = 12.sp)
                 }
             }
