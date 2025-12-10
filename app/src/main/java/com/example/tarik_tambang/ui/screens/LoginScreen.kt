@@ -143,8 +143,23 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                         onValueChange = { username = it.trim() },
                         label = { Text("USERNAME", fontWeight = FontWeight.Bold) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFE60012),
+                            unfocusedBorderColor = Color(0xFF444444),
+                            cursorColor = Color(0xFFE60012),
+
+                            focusedLabelColor = Color.White,
+                            unfocusedLabelColor = Color.White,
+
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+
+                            focusedLeadingIconColor = Color.White,
+                            unfocusedLeadingIconColor = Color.White
+                        )
                     )
+
 
                     Spacer(Modifier.height(16.dp))
 

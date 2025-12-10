@@ -202,7 +202,44 @@ fun ProfileScreen(
 
                     // UPDATE BUTTON
                     Button(
-                        onClick = { /* update */ },
+                        onClick = {
+                            if (newUsername.isBlank()) {
+                                message = "Username tidak boleh kosong"
+                                return@Button
+                            }
+
+                            loading = true
+                            message = ""
+
+                            ApiClient.instance.updateProfile(
+                                oldUsername = username,
+                                newUsername = newUsername,
+                                newPassword = if (newPassword.isBlank()) null else newPassword
+                            ).enqueue(object : Callback<UpdateProfileResponse> {
+
+                                override fun onResponse(
+                                    call: Call<UpdateProfileResponse>,
+                                    response: Response<UpdateProfileResponse>
+                                ) {
+                                    loading = false
+                                    val res = response.body()
+
+                                    if (res != null && res.success) {
+                                        UserPrefs.saveName(context, res.username!!)
+                                        onUsernameUpdated(res.username)
+
+                                        message = "Profil berhasil diperbarui!"
+                                    } else {
+                                        message = res?.message ?: "Gagal memperbarui profil."
+                                    }
+                                }
+
+                                override fun onFailure(call: Call<UpdateProfileResponse>, t: Throwable) {
+                                    loading = false
+                                    message = "Tidak dapat terhubung ke server."
+                                }
+                            })
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -216,7 +253,6 @@ fun ProfileScreen(
                             color = Color.White
                         )
                     }
-
                     Spacer(Modifier.height(12.dp))
 
                     // DELETE BUTTON
