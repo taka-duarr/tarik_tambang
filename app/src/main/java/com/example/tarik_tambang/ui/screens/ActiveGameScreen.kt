@@ -111,7 +111,7 @@ fun ActiveGameScreen(
         roomRef.child("currentQuestion").addValueEventListener(simpleStringListener { questionText = it ?: "Menunggu soal..." })
     }
 
-    // UI
+    // UI owkowkowkwkow
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(colors = listOf(Color(0xFFCC0000), Color(0xFF990000), Color.Black), start = Offset(0f, 0f), end = Offset(1000f, 1000f))).alpha(0.7f))
         repeat(5) { index -> Box(modifier = Modifier.fillMaxWidth(3f).height(80.dp).offset(y = (index * 200f - offset).dp).rotate(-45f).background(Color.Red.copy(alpha = 0.1f))) }
