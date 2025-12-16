@@ -218,12 +218,12 @@ private fun GameContent(
 
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                 if (winner.isNotBlank()) {
-                    WinnerContent(winner, pulseScale) { 
+                    WinnerContent(winner, pulseScale) {
                         roomRef.updateChildren(mapOf("playerA/score" to 0, "playerB/score" to 0, "playerA/ready" to 0, "playerB/ready" to 0, "winner" to "", "status" to "waiting", "currentQuestion" to "Menunggu...", "currentAnswer" to 0))
                             .addOnSuccessListener { onMessageChange("Game direset, tunggu pemain lain") }
                     }
                 } else if (status == "playing") {
-                    PlayingContent(questionText, userAnswer, onUserAnswerChange) { 
+                    PlayingContent(questionText, userAnswer, onUserAnswerChange) {
                         val answerInt = userAnswer.toIntOrNull()
                         if (answerInt == null) { onMessageChange("Masukkan jawaban berupa angka"); return@PlayingContent }
                         roomRef.child("currentAnswer").get().addOnSuccessListener { answerSnapshot ->
@@ -240,6 +240,7 @@ private fun GameContent(
                                             if (aScore >= 10) roomRef.updateChildren(mapOf("winner" to playerAName.ifBlank { "Player A" }, "status" to "finished"))
                                             else if (bScore >= 10) roomRef.updateChildren(mapOf("winner" to playerBName.ifBlank { "Player B" }, "status" to "finished"))
                                             else generateNewQuestion(roomRef)
+
                                         }
                                     }
                                 })
@@ -251,7 +252,7 @@ private fun GameContent(
                     }
                 } else {
                     val myReadyState = if (myRole == "playerA") playerAReady else playerBReady
-                    WaitingContent(myReadyState, pulseScale) { 
+                    WaitingContent(myReadyState, pulseScale) {
                         AudioManager.playSfx(R.raw.ready_sfx)
                         roomRef.child("$myRole/ready").setValue(1).addOnSuccessListener {
                             val otherReady = if (myRole == "playerA") playerBReady else playerAReady
@@ -343,7 +344,7 @@ private fun WaitingContent(myReadyState: Boolean, pulseScale: Float, onReadyClic
         }
     } else {
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally, 
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             PulsingDots()

@@ -8,6 +8,19 @@ object UserPrefs {
     private const val WINS_KEY = "user_wins"
     private const val MUSIC_VOLUME_KEY = "music_volume"
     private const val SFX_VOLUME_KEY = "sfx_volume"
+    private const val TOKEN_KEY = "jwt_token"
+
+    fun saveToken(context: Context, token: String) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putString(TOKEN_KEY, token)
+            .apply()
+    }
+
+    fun getToken(context: Context): String? {
+        return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getString(TOKEN_KEY, null)
+    }
 
     fun saveName(context: Context, name: String) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

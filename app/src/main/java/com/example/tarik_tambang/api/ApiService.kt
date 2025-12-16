@@ -5,6 +5,7 @@ import retrofit2.http.Field
 import retrofit2.http.FormUrlEncoded
 import retrofit2.http.POST
 import retrofit2.http.GET
+import retrofit2.http.Header
 
 interface ApiService {
 
@@ -15,11 +16,9 @@ interface ApiService {
         @Field("password") password: String
     ): Call<LoginResponse>
 
-    @FormUrlEncoded
     @POST("add-win")
-    fun addWin(
-        @Field("username") username: String
-    ): Call<AddWinResponse>
+    fun addWin(): Call<AddWinResponse>
+
 
     @GET("leaderboard")
     fun getLeaderboard(): Call<LeaderboardResponse>
@@ -34,16 +33,17 @@ interface ApiService {
     @FormUrlEncoded
     @POST("update-profile")
     fun updateProfile(
-        @Field("old_username") oldUsername: String,
+        @Header("Authorization") token: String,
         @Field("new_username") newUsername: String,
         @Field("new_password") newPassword: String?
     ): Call<UpdateProfileResponse>
 
-    @FormUrlEncoded
+
     @POST("delete-account")
     fun deleteAccount(
-        @Field("username") username: String
+        @Header("Authorization") token: String
     ): Call<UpdateProfileResponse>
+
 
 
 

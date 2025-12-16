@@ -3,8 +3,10 @@ package com.example.tarik_tambang.ui.screens
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,22 +19,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.tarik_tambang.UserPrefs
 import com.example.tarik_tambang.api.ApiClient
 import com.example.tarik_tambang.api.LoginResponse
-import com.example.tarik_tambang.UserPrefs
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.clickable
 
 @Composable
-fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
+fun LoginScreen(onLogin: (String) -> Unit, onRegister: () -> Unit) {
     val context = LocalContext.current
 
     var username by remember { mutableStateOf("") }
@@ -191,9 +191,8 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                             loading = true
                             message = ""
 
-                            ApiClient.instance.login(username, password)
+                            ApiClient.getInstance(context).login(username, password)
                                 .enqueue(object : Callback<LoginResponse> {
-
                                     override fun onResponse(
                                         call: Call<LoginResponse>,
                                         response: Response<LoginResponse>
@@ -201,26 +200,32 @@ fun LoginScreen(onLogin: (String) -> Unit,onRegister: () -> Unit) {
                                         loading = false
                                         val res = response.body()
 
-                                        if (res != null && res.success) {
+                                        if (response.isSuccessful && res != null && res.success) {
+                                            val token = res.accessToken
 
-                                            val userNameFromApi = res.user?.username ?: ""
+                                            if (token != null) {
+                                                UserPrefs.saveToken(context, token)
+                                                UserPrefs.saveName(
+                                                    context,
+                                                    username
+                                                ) // ← pakai input user
 
-                                            // Simpan ke SharedPreferences
-                                            UserPrefs.saveName(context, userNameFromApi)
-
-                                            // Lanjut ke halaman berikut
-                                            onLogin(userNameFromApi)
-
+                                                onLogin(username)
+                                            } else {
+                                                message = "Token tidak ditemukan"
+                                            }
                                         } else {
-                                            message = res?.message ?: "Login gagal"
+                                            message = res?.message ?: "Login gagal. Periksa kembali username dan password Anda."
                                         }
                                     }
 
-                                    override fun onFailure(call: Call<LoginResponse>, t: Throwable) {
+                                    override fun onFailure(
+                                        call: Call<LoginResponse>,
+                                        t: Throwable
+                                    ) {
                                         loading = false
                                         message = t.message ?: "Tidak dapat terhubung ke server"
                                     }
-
                                 })
                         },
                         modifier = Modifier

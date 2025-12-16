@@ -168,12 +168,14 @@ fun UpdateScreen(
 
                             loading = true
                             message = ""
+                            val token = UserPrefs.getToken(context)
 
-                            ApiClient.instance.updateProfile(
-                                oldUsername = currentUsername,
+                            ApiClient.getInstance(context).updateProfile(
+                                token = "Bearer $token",
                                 newUsername = newUsername,
                                 newPassword = if (newPassword.isBlank()) null else newPassword
                             ).enqueue(object : Callback<UpdateProfileResponse> {
+
                                 override fun onResponse(
                                     call: Call<UpdateProfileResponse>,
                                     response: Response<UpdateProfileResponse>
@@ -181,16 +183,19 @@ fun UpdateScreen(
                                     loading = false
                                     val res = response.body()
 
-                                    if (res != null && res.success) {
-                                        onUpdateSuccess(res.username!!)
+                                    if (response.isSuccessful && res != null && res.success) {
+                                        // SIMPAN USERNAME BARU
+                                        UserPrefs.saveName(context, newUsername)
+
+                                        onUpdateSuccess(newUsername)
                                     } else {
-                                        message = res?.message ?: "Gagal memperbarui profil."
+                                        message = res?.message ?: "Gagal memperbarui profil"
                                     }
                                 }
 
                                 override fun onFailure(call: Call<UpdateProfileResponse>, t: Throwable) {
                                     loading = false
-                                    message = "Tidak dapat terhubung ke server."
+                                    message = "Tidak dapat terhubung ke server"
                                 }
                             })
                         },

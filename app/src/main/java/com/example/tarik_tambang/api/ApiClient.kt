@@ -4,14 +4,21 @@ package com.example.tarik_tambang.api
 import com.example.tarik_tambang.BuildConfig
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import okhttp3.OkHttpClient
+import android.content.Context
+import com.example.tarik_tambang.data.AuthInterceptor
 
 object ApiClient {
-    private const val BASE_URL = BuildConfig.API_URL
 
-    val instance: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
+    fun getInstance(context: Context): ApiService {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(AuthInterceptor(context))
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(BuildConfig.API_URL)
             .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
             .build()
             .create(ApiService::class.java)
     }

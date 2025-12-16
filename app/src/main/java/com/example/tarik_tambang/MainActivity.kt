@@ -11,6 +11,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.example.tarik_tambang.audio.AudioManager
 import com.example.tarik_tambang.ui.screens.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.LaunchedEffect
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,15 +63,29 @@ fun GameNavigation() {
         onDispose { }
     }
 
-    var currentScreen by remember { mutableStateOf(Screen.Login) }
-    var savedName by remember { mutableStateOf(UserPrefs.getName(context)) }
+    // Determine start screen based on saved name
+    var savedName by rememberSaveable {
+        mutableStateOf(UserPrefs.getName(context))
+    }
+
+    var currentScreen by rememberSaveable {
+        mutableStateOf(
+            if (savedName != null) Screen.MainMenu else Screen.Login
+        )
+    }
+    LaunchedEffect(savedName) {
+        currentScreen = if (savedName != null) {
+            Screen.MainMenu
+        } else {
+            Screen.Login
+        }
+    }
+
+
+
     var userWins by remember { mutableStateOf(UserPrefs.getWins(context)) }
     var activeRoomCode by remember { mutableStateOf<String?>(null) }
     var activeRole by remember { mutableStateOf<String?>(null) }
-
-    if (savedName != null && currentScreen == Screen.Login) {
-        currentScreen = Screen.MainMenu
-    }
 
     // State for double-press-to-exit
     var backPressedTime by remember { mutableStateOf(0L) }

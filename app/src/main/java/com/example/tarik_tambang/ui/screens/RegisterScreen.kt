@@ -29,8 +29,15 @@ import kotlinx.coroutines.delay
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+
+
+
+
 
 private fun registerUser(
+    context: Context,
     username: String,
     pass: String,
     confirmPass: String,
@@ -51,7 +58,7 @@ private fun registerUser(
     setLoading(true)
     setMessage("")
 
-    ApiClient.instance.register(username, pass)
+    ApiClient.getInstance(context).register(username, pass)
         .enqueue(object : Callback<RegisterResponse> {
             override fun onResponse(
                 call: Call<RegisterResponse>,
@@ -75,6 +82,7 @@ private fun registerUser(
         })
 }
 
+
 @Composable
 fun RegisterScreen(
     onBackToLogin: () -> Unit,
@@ -85,13 +93,15 @@ fun RegisterScreen(
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var registrationSuccess by remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
     if (registrationSuccess) {
         LaunchedEffect(Unit) {
             delay(2000)
             onBackToLogin()
         }
     }
+
+
 
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
     val offset by infiniteTransition.animateFloat(
@@ -222,6 +232,7 @@ fun RegisterScreen(
                     Button(
                         onClick = {
                             registerUser(
+                                context = context,
                                 username = username,
                                 pass = password,
                                 confirmPass = confirmPassword,

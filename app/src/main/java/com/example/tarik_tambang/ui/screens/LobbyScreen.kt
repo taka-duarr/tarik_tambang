@@ -30,6 +30,7 @@ import com.example.tarik_tambang.util.generateRoomCode
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ServerValue
 
+
 @Composable
 fun LobbyScreen(
     fixedName: String,

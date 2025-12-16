@@ -26,22 +26,42 @@ import com.example.tarik_tambang.ui.components.BackButton
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import android.content.Context
+import com.example.tarik_tambang.UserPrefs
+import androidx.compose.ui.platform.LocalContext
 
-private fun deleteAccount(username: String, onLogout: () -> Unit) {
-    ApiClient.instance.deleteAccount(username)
+private fun deleteAccount(
+    context: Context,
+    onLogout: () -> Unit
+) {
+    val token = UserPrefs.getToken(context)
+
+    if (token == null) {
+        onLogout()
+        return
+    }
+
+    ApiClient.getInstance(context).deleteAccount("Bearer $token")
         .enqueue(object : Callback<UpdateProfileResponse> {
+
             override fun onResponse(
                 call: Call<UpdateProfileResponse>,
                 response: Response<UpdateProfileResponse>
             ) {
                 if (response.isSuccessful && response.body()?.success == true) {
+                    UserPrefs.clear(context)
                     onLogout()
                 }
             }
 
-            override fun onFailure(call: Call<UpdateProfileResponse>, t: Throwable) {}
+            override fun onFailure(call: Call<UpdateProfileResponse>, t: Throwable) {
+                // optional: log error
+            }
         })
 }
+
+
+
 
 @Composable
 fun ProfileScreen(
@@ -52,7 +72,7 @@ fun ProfileScreen(
     onBack: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
-
+    val context = LocalContext.current
     val infiniteTransition = rememberInfiniteTransition(label = "bg")
     val offset by infiniteTransition.animateFloat(
         initialValue = 0f,
@@ -180,7 +200,8 @@ fun ProfileScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
-                    deleteAccount(username, onLogout)
+                    deleteAccount(context, onLogout)
+
                 }) {
                     Text("DELETE", color = Color.Red)
                 }

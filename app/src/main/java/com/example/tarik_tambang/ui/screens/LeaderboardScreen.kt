@@ -1,5 +1,6 @@
 package com.example.tarik_tambang.ui.screens
 
+import android.content.Context
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -29,6 +30,7 @@ import com.example.tarik_tambang.api.LeaderboardPlayer
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun LeaderboardScreen(onBack: () -> Unit) {
@@ -47,10 +49,10 @@ fun LeaderboardScreen(onBack: () -> Unit) {
         ),
         label = "offset"
     )
-
+    val context = LocalContext.current
     // Ambil data dari mysql
     LaunchedEffect(Unit) {
-        ApiClient.instance.getLeaderboard()
+        ApiClient.getInstance(context).getLeaderboard()
             .enqueue(object : Callback<LeaderboardResponse> {
                 override fun onResponse(
                     call: Call<LeaderboardResponse>,
