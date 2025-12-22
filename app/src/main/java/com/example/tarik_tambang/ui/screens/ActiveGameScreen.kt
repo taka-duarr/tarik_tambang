@@ -34,6 +34,16 @@ import com.example.tarik_tambang.ui.components.BackButton
 import com.example.tarik_tambang.ui.components.PlayerCard
 import com.google.firebase.database.*
 import kotlinx.coroutines.delay
+import com.example.tarik_tambang.api.ApiClient
+import com.example.tarik_tambang.UserPrefs
+import com.example.tarik_tambang.api.AddWinResponse
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import android.content.Context
+
+
+
 
 // --- Helper Functions ---
 
@@ -66,8 +76,10 @@ fun ActiveGameScreen(
     myName: String,
     onLeaveRoom: () -> Unit
 ) {
+    val context = LocalContext.current
     val roomRef = remember { FirebaseDatabase.getInstance().getReference("rooms").child(roomCode) }
 
+    var winSent by remember { mutableStateOf(false) }
     var playerAName by remember { mutableStateOf("") }
     var playerAScore by remember { mutableStateOf(0) }
     val playerAReady = remember { mutableStateOf(false) }
@@ -122,13 +134,24 @@ fun ActiveGameScreen(
             PlayerSection(playerAName, playerBName, playerAScore, playerBScore, playerAReady.value, playerBReady.value, myRole, ropePosition)
             Spacer(Modifier.height(16.dp))
             GameContent(
+                context = context,
                 modifier = Modifier.weight(1f),
-                roomRef = roomRef, status = status, winner = winner, pulseScale = pulseScale,
-                myName = myName, myRole = myRole, playerAName = playerAName, playerBName = playerBName,
-                questionText = questionText, userAnswer = userAnswer, message = message,
-                playerAReady = playerAReady.value, playerBReady = playerBReady.value,
+                roomRef = roomRef,
+                status = status,
+                winner = winner,
+                pulseScale = pulseScale,
+                myName = myName,
+                myRole = myRole,
+                playerAName = playerAName,
+                playerBName = playerBName,
+                questionText = questionText,
+                userAnswer = userAnswer,
+                message = message,
+                playerAReady = playerAReady.value,
+                playerBReady = playerBReady.value,
                 onUserAnswerChange = { userAnswer = it },
-                onMessageChange = { message = it }
+                onMessageChange = { message = it },
+                onWin = { addWinToServer(context) }
             )
         }
 
@@ -139,6 +162,7 @@ fun ActiveGameScreen(
 @Composable
 private fun Header(roomCode: String) {
     val context = LocalContext.current
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -193,12 +217,24 @@ private fun PlayerSection(playerAName: String, playerBName: String, playerAScore
 
 @Composable
 private fun GameContent(
+    context: Context,
     modifier: Modifier = Modifier,
-    roomRef: DatabaseReference, status: String, winner: String, pulseScale: Float,
-    myName: String, myRole: String, playerAName: String, playerBName: String,
-    questionText: String, userAnswer: String, message: String,
-    playerAReady: Boolean, playerBReady: Boolean,
-    onUserAnswerChange: (String) -> Unit, onMessageChange: (String) -> Unit
+    roomRef: DatabaseReference,
+    status: String,
+    winner: String,
+    pulseScale: Float,
+    myName: String,
+    myRole: String,
+    playerAName: String,
+    playerBName: String,
+    questionText: String,
+    userAnswer: String,
+    message: String,
+    playerAReady: Boolean,
+    playerBReady: Boolean,
+    onUserAnswerChange: (String) -> Unit,
+    onMessageChange: (String) -> Unit,
+    onWin: () -> Unit
 ) {
     Box(
         modifier = modifier.fillMaxWidth().background(Brush.verticalGradient(colors = listOf(Color(0xFF1A1A1A), Color(0xFF0A0A0A))), shape = RoundedCornerShape(16.dp)).border(1.dp, Color.Black, RoundedCornerShape(16.dp)),
@@ -237,8 +273,32 @@ private fun GameContent(
                                         roomRef.get().addOnSuccessListener { snap ->
                                             val aScore = snap.child("playerA/score").getValue(Int::class.java) ?: 0
                                             val bScore = snap.child("playerB/score").getValue(Int::class.java) ?: 0
-                                            if (aScore >= 10) roomRef.updateChildren(mapOf("winner" to playerAName.ifBlank { "Player A" }, "status" to "finished"))
-                                            else if (bScore >= 10) roomRef.updateChildren(mapOf("winner" to playerBName.ifBlank { "Player B" }, "status" to "finished"))
+                                            if (aScore >= 10) {
+                                                roomRef.updateChildren(
+                                                    mapOf(
+                                                        "winner" to playerAName,
+                                                        "status" to "finished"
+                                                    )
+                                                )
+
+                                                if (myRole == "playerA") {
+                                                    onWin()
+                                                }
+                                            }
+
+                                            else if (bScore >= 10) {
+                                                roomRef.updateChildren(
+                                                    mapOf(
+                                                        "winner" to playerBName,
+                                                        "status" to "finished"
+                                                    )
+                                                )
+
+                                                if (myRole == "playerB") {
+                                                    onWin()
+                                                }
+                                            }
+
                                             else generateNewQuestion(roomRef)
 
                                         }
@@ -289,6 +349,26 @@ private fun WinnerContent(winner: String, pulseScale: Float, onPlayAgain: () -> 
         }
     }
 }
+
+private fun addWinToServer(context: Context) {
+    ApiClient.getInstance(context)
+        .addWin()
+        .enqueue(object : Callback<AddWinResponse> {
+
+            override fun onResponse(
+                call: Call<AddWinResponse>,
+                response: Response<AddWinResponse>
+            ) {
+
+            }
+
+            override fun onFailure(call: Call<AddWinResponse>, t: Throwable) {
+
+            }
+        })
+}
+
+
 
 @Composable
 private fun PlayingContent(questionText: String, userAnswer: String, onUserAnswerChange: (String) -> Unit, onSubmit: () -> Unit) {
