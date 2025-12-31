@@ -18,7 +18,7 @@ android {
         versionCode = 1
         versionName = "1.0"
 
-        buildConfigField("String", "API_URL", "\"http://10.0.2.2:8000/api/\"")
+        buildConfigField("String", "API_URL", "\"https://ttserver.zatwasdead.my.id/api/\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 //"ttserver.https://zatwasdead.my.id/api/"
         //"https://zatwasdead.my.id/tarik_tambang_server/api/"
