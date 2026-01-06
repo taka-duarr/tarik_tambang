@@ -58,13 +58,63 @@ fun simpleIntListener(onValue: (Int?) -> Unit) = object : ValueEventListener {
 }
 
 fun generateNewQuestion(roomRef: DatabaseReference) {
-    val num1 = (1..20).random()
-    val num2 = (1..20).random()
-    roomRef.updateChildren(mapOf(
-        "currentQuestion" to "$num1 + $num2 = ?",
-        "currentAnswer" to num1 + num2
-    ))
+
+    val operators = listOf("+", "-", "×", "÷")
+    val operator = operators.random()
+
+    var num1: Int
+    var num2: Int
+    var answer: Int
+    var question: String
+
+    when (operator) {
+        "+" -> {
+            num1 = (1..20).random()
+            num2 = (1..20).random()
+            answer = num1 + num2
+            question = "$num1 + $num2 = ?"
+        }
+
+        "-" -> {
+            num1 = (1..20).random()
+            num2 = (1..20).random()
+            // 🔒 pastikan hasil tidak negatif
+            if (num2 > num1) {
+                val temp = num1
+                num1 = num2
+                num2 = temp
+            }
+            answer = num1 - num2
+            question = "$num1 - $num2 = ?"
+        }
+
+        "×" -> {
+            num1 = (1..10).random()
+            num2 = (1..10).random()
+            answer = num1 * num2
+            question = "$num1 × $num2 = ?"
+        }
+
+        "÷" -> {
+            // 🔒 pastikan hasil bulat
+            answer = (1..10).random()
+            num2 = (1..10).random()
+            num1 = answer * num2
+            question = "$num1 ÷ $num2 = ?"
+        }
+
+        else -> return
+    }
+
+    roomRef.updateChildren(
+        mapOf(
+            "currentQuestion" to question,
+            "currentAnswer" to answer,
+            "answeredBy" to "" // reset kunci soal
+        )
+    )
 }
+
 
 // --- Composables ---
 
@@ -260,56 +310,88 @@ private fun GameContent(
                     }
                 } else if (status == "playing") {
                     PlayingContent(questionText, userAnswer, onUserAnswerChange) {
+
                         val answerInt = userAnswer.toIntOrNull()
-                        if (answerInt == null) { onMessageChange("Masukkan jawaban berupa angka"); return@PlayingContent }
-                        roomRef.child("currentAnswer").get().addOnSuccessListener { answerSnapshot ->
-                            val correctAnswer = answerSnapshot.getValue(Int::class.java)
-                            if (answerInt == correctAnswer) {
-                                onMessageChange("BENAR! Menambah skor...")
-                                roomRef.child("$myRole/score").runTransaction(object : Transaction.Handler {
-                                    override fun doTransaction(currentData: MutableData): Transaction.Result { currentData.value = (currentData.getValue(Int::class.java) ?: 0) + 1; return Transaction.success(currentData) }
-                                    override fun onComplete(error: DatabaseError?, committed: Boolean, currentData: DataSnapshot?) {
-                                        if (error != null || !committed) { onMessageChange("Gagal update skor: ${error?.message}"); return }
-                                        roomRef.get().addOnSuccessListener { snap ->
-                                            val aScore = snap.child("playerA/score").getValue(Int::class.java) ?: 0
-                                            val bScore = snap.child("playerB/score").getValue(Int::class.java) ?: 0
-                                            if (aScore >= 10) {
-                                                roomRef.updateChildren(
-                                                    mapOf(
-                                                        "winner" to playerAName,
-                                                        "status" to "finished"
-                                                    )
-                                                )
+                        if (answerInt == null) {
+                            onMessageChange("Masukkan jawaban berupa angka")
+                            return@PlayingContent
+                        }
 
-                                                if (myRole == "playerA") {
-                                                    onWin()
-                                                }
-                                            }
+                        roomRef.runTransaction(object : Transaction.Handler {
 
-                                            else if (bScore >= 10) {
-                                                roomRef.updateChildren(
-                                                    mapOf(
-                                                        "winner" to playerBName,
-                                                        "status" to "finished"
-                                                    )
-                                                )
+                            override fun doTransaction(currentData: MutableData): Transaction.Result {
 
-                                                if (myRole == "playerB") {
-                                                    onWin()
-                                                }
-                                            }
+                                val answeredBy =
+                                    currentData.child("answeredBy").getValue(String::class.java)
 
-                                            else generateNewQuestion(roomRef)
+                                // 🔒 soal sudah dijawab → STOP
+                                if (!answeredBy.isNullOrEmpty()) {
+                                    return Transaction.abort()
+                                }
 
-                                        }
-                                    }
-                                })
-                                onUserAnswerChange("")
-                            } else {
-                                onMessageChange("SALAH! Coba lagi.")
+                                val correctAnswer =
+                                    currentData.child("currentAnswer").getValue(Int::class.java)
+
+                                // ❌ jawaban salah
+                                if (correctAnswer == null || answerInt != correctAnswer) {
+                                    return Transaction.abort()
+                                }
+
+                                // ✅ tandai soal sudah dijawab
+                                currentData.child("answeredBy").value = myRole
+
+                                val scorePath = "$myRole/score"
+                                val currentScore =
+                                    currentData.child(scorePath).getValue(Int::class.java) ?: 0
+
+                                currentData.child(scorePath).value = currentScore + 1
+
+                                return Transaction.success(currentData)
                             }
-                        }.addOnFailureListener { onMessageChange("Gagal mengecek jawaban: ${it.message}") }
+
+                            override fun onComplete(
+                                error: DatabaseError?,
+                                committed: Boolean,
+                                snapshot: DataSnapshot?
+                            ) {
+                                if (!committed) {
+                                    onMessageChange("Jawaban sudah diproses")
+                                    return
+                                }
+
+
+                                val aScore =
+                                    snapshot?.child("playerA/score")?.getValue(Int::class.java) ?: 0
+                                val bScore =
+                                    snapshot?.child("playerB/score")?.getValue(Int::class.java) ?: 0
+
+                                if (aScore >= 10) {
+                                    roomRef.updateChildren(
+                                        mapOf(
+                                            "winner" to playerAName,
+                                            "status" to "finished"
+                                        )
+                                    )
+                                    if (myRole == "playerA") onWin()
+
+                                } else if (bScore >= 10) {
+                                    roomRef.updateChildren(
+                                        mapOf(
+                                            "winner" to playerBName,
+                                            "status" to "finished"
+                                        )
+                                    )
+                                    if (myRole == "playerB") onWin()
+
+                                } else {
+                                    generateNewQuestion(roomRef)
+                                }
+
+                                onUserAnswerChange("")
+                            }
+                        })
                     }
+
                 } else {
                     val myReadyState = if (myRole == "playerA") playerAReady else playerBReady
                     WaitingContent(myReadyState, pulseScale) {
