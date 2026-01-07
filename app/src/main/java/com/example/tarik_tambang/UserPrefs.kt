@@ -10,6 +10,27 @@ object UserPrefs {
     private const val SFX_VOLUME_KEY = "sfx_volume"
     private const val TOKEN_KEY = "jwt_token"
 
+    private const val KEY_LOGIN_TIME = "login_time"
+
+    fun isSessionExpired(context: Context): Boolean {
+        val loginTime = getLoginTime(context)
+        if (loginTime == 0L) return true
+
+        val now = System.currentTimeMillis()
+        val twoDaysMillis = 2 * 24 * 60 * 60 * 1000L
+
+        return now - loginTime > twoDaysMillis
+    }
+
+    fun saveLoginTime(context: Context) {
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        prefs.edit().putLong(KEY_LOGIN_TIME, System.currentTimeMillis()).apply()
+    }
+
+    fun getLoginTime(context: Context): Long {
+        val prefs = context.getSharedPreferences("user_prefs", Context.MODE_PRIVATE)
+        return prefs.getLong(KEY_LOGIN_TIME, 0L)
+    }
     fun saveToken(context: Context, token: String) {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()

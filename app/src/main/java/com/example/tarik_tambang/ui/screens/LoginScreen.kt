@@ -209,6 +209,8 @@ fun LoginScreen(onLogin: (String) -> Unit, onRegister: () -> Unit) {
                                                     context,
                                                     username
                                                 ) // ← pakai input user
+                                                UserPrefs.saveLoginTime(context)
+
 
                                                 onLogin(username)
                                             } else {

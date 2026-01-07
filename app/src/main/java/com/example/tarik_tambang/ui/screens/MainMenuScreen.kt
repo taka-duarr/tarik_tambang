@@ -35,7 +35,8 @@ fun MainMenuScreen(
     onPlay: () -> Unit,
     onLeaderboard: () -> Unit,
     onSettings: () -> Unit,
-    onProfile: () -> Unit
+    onProfile: () -> Unit,
+    onLogout: () -> Unit
 ) {
     val context = LocalContext.current
 
@@ -50,7 +51,12 @@ fun MainMenuScreen(
         ),
         label = "offset"
     )
-
+    LaunchedEffect(Unit) {
+        if (UserPrefs.isSessionExpired(context)) {
+            UserPrefs.clear(context)
+            onLogout() // 🔥 BALIK KE LOGIN
+        }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -355,6 +361,7 @@ fun MainMenuScreenPreview() {
         onPlay = {},
         onLeaderboard = {},
         onSettings = {},
-        onProfile = {}
+        onProfile = {},
+        onLogout = {}
     )
 }

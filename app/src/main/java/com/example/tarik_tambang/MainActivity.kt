@@ -146,6 +146,13 @@ fun GameNavigation() {
         }
 
         Screen.MainMenu -> {
+            LaunchedEffect(Unit) {
+                if (UserPrefs.isSessionExpired(context)) {
+                    UserPrefs.clear(context)
+                    savedName = null
+                    currentScreen = Screen.Login
+                }
+            }
             MainMenuScreen(
                 onPlay = { 
                     AudioManager.playSfx(R.raw.button_click)
@@ -162,6 +169,11 @@ fun GameNavigation() {
                 onProfile = {
                     AudioManager.playSfx(R.raw.button_click)
                     currentScreen = Screen.Profile
+                },
+                onLogout = {
+                    UserPrefs.clear(context)
+                    savedName = null
+                    currentScreen = Screen.Login
                 }
             )
         }
